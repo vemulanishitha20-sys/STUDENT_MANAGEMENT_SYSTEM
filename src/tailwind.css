@@ -1,0 +1,312 @@
+@import url("https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Fredoka:wght@600;700&display=swap");
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    @apply box-border;
+  }
+  body {
+    @apply m-0 bg-[#fbfaf7] text-slate-800;
+    font-family: "DM Sans", sans-serif;
+  }
+  h1,
+  h2,
+  h3 {
+    font-family: "Fredoka", sans-serif;
+  }
+}
+
+/* Softer charcoal surfaces keep dark mode calm and readable without becoming black. */
+.dark body,
+.dark main[data-portal],
+.dark [class~="bg-slate-950"],
+.dark [class~="dark:bg-slate-950"] {
+  background-color: #1c1d27 !important;
+}
+
+.dark [class~="bg-slate-900"],
+.dark [class~="dark:bg-slate-900"],
+.dark [class~="dark:bg-slate-950/95"] {
+  background-color: #242631 !important;
+}
+
+.dark [class~="bg-slate-800"],
+.dark [class~="dark:bg-slate-800"] {
+  background-color: #2c2e3a !important;
+}
+
+.dark [class~="border-slate-700"],
+.dark [class~="dark:border-slate-700"] {
+  border-color: #454856 !important;
+}
+
+/* Keep the schedule editor consistent with the compact account-creation modal. */
+form.max-w-2xl {
+  max-width: 28rem !important;
+  text-align: center;
+}
+
+form.max-w-2xl > .grid {
+  text-align: left;
+}
+
+/* Keep the Academic Calendar editor at a comfortable medium dialog width. */
+[data-academic-calendar] form.max-w-2xl {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  margin: 0;
+  max-width: 32rem !important;
+  max-height: calc(100vh - 2rem);
+  overflow-y: auto;
+  transform: translate(-50%, -50%);
+  text-align: left;
+}
+
+/* Align every portal page title consistently within its top navigation bar. */
+main[data-portal] > header > .min-w-0.flex-1 {
+  display: flex;
+  min-height: 2.75rem;
+  align-items: center;
+}
+
+main[data-portal] > header h1 {
+  display: none;
+}
+
+[data-academic-calendar] form label:has(input[placeholder="All sections"]) {
+  display: none;
+}
+
+
+/* The weekly timetable should fit its page instead of requiring side scrolling. */
+.overflow-scroll {
+  overflow-x: auto !important;
+  overflow-y: auto !important;
+}
+
+table.min-w-\[900px\] {
+  min-width: 100% !important;
+  table-layout: fixed;
+}
+
+table.min-w-\[900px\] th,
+table.min-w-\[900px\] td {
+  overflow-wrap: anywhere;
+}
+
+/* Schedule: compact, scrollable and readable on phones in portrait or landscape. */
+@media (max-width: 640px) {
+  .overflow-scroll > table.min-w-\[900px\] {
+    min-width: 760px !important;
+  }
+  .overflow-scroll > table.min-w-\[900px\] th,
+  .overflow-scroll > table.min-w-\[900px\] td {
+    padding: 0.65rem !important;
+  }
+  .overflow-scroll > table.min-w-\[900px\] td > div {
+    min-width: 8.5rem;
+  }
+}
+
+@media (max-height: 540px) and (orientation: landscape) {
+  main:has(.overflow-scroll) {
+    padding-top: 0.5rem !important;
+  }
+  main:has(.overflow-scroll) > header {
+    margin-bottom: 0.5rem !important;
+    padding-bottom: 0.5rem !important;
+  }
+  .overflow-scroll {
+    height: calc(100vh - 13rem) !important;
+    min-height: 18rem !important;
+  }
+}
+
+/* The timing note is already shown in the schedule header. */
+form.max-w-2xl > p.mt-4.rounded-xl {
+  display: none;
+}
+
+.sports-day-column {
+  background-color: rgb(255 247 237) !important;
+}
+
+/* Keep weekday headings visible while the timetable body scrolls. */
+.overflow-scroll > table.min-w-\[900px\] > thead.sticky {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+}
+
+.overflow-scroll > table.min-w-\[900px\] > thead th {
+  background-color: rgb(248 250 252);
+}
+
+/* Students read one branch/year timetable; show it as one continuous page
+   rather than a separate scroll panel. */
+section[data-role="student"] .overflow-scroll {
+  height: auto !important;
+  min-height: 0 !important;
+  overflow: visible !important;
+}
+
+section[data-role="student"] table.min-w-\[900px\] {
+  min-width: 100% !important;
+}
+
+/* The student summary is plain page content, not part of the old dark banner. */
+main[data-portal="student"][data-page="dashboard"] > section > div:first-child {
+  display: flex;
+  flex-direction: column;
+}
+
+main[data-portal="student"][data-page="dashboard"] > section > div:first-child > p:first-child {
+  order: 1;
+}
+
+main[data-portal="student"][data-page="dashboard"] > section > div:first-child > p:last-child {
+  order: 2;
+  color: rgb(100 116 139) !important;
+}
+
+main[data-portal="student"][data-page="dashboard"] > section > div:first-child > h2 {
+  order: 3;
+}
+
+.dark main[data-portal="student"][data-page="dashboard"] > section > div:first-child > p:last-child {
+  color: rgb(203 213 225) !important;
+}
+
+.dark .sports-day-column {
+  background-color: #45322f !important;
+}
+
+.dark .overflow-scroll {
+  background-color: #292c38 !important;
+  border-color: #4b5060 !important;
+}
+
+.dark .overflow-scroll > table.min-w-\[900px\] > thead th {
+  background-color: #242733 !important;
+  color: rgb(226 232 240) !important;
+}
+
+.dark .overflow-scroll > table.min-w-\[900px\] td,
+.dark .overflow-scroll > table.min-w-\[900px\] th {
+  border-color: rgb(71 85 105) !important;
+}
+
+.dark .overflow-scroll > table.min-w-\[900px\] tbody th {
+  background-color: #2c303d !important;
+}
+
+.dark .overflow-scroll > table.min-w-\[900px\] td > div {
+  background-color: #252936 !important;
+  border-color: #505666 !important;
+}
+
+.dark .overflow-scroll > table.min-w-\[900px\] .bg-amber-50,
+.dark .overflow-scroll > table.min-w-\[900px\] .bg-amber-100 {
+  background-color: rgb(69 26 3 / 0.55) !important;
+}
+
+/* When the schedule form is open, validation feedback stays with that form. */
+section:has(form.max-w-2xl) > p.mt-4.rounded-xl {
+  position: fixed;
+  z-index: 80;
+  left: 50%;
+  top: calc(50% + 120px);
+  width: min(24rem, calc(100vw - 2rem));
+  transform: translateX(-50%);
+}
+@layer base {
+  .dark body {
+    @apply bg-slate-950 text-slate-100;
+  }
+  .dark .bg-\[\#fbfaf7\] {
+    @apply bg-slate-950;
+  }
+  .dark .bg-white {
+    @apply bg-slate-800;
+  }
+  .dark .bg-stone-50,
+  .dark .bg-stone-100 {
+    @apply bg-slate-900;
+  }
+  .dark .border-stone-100,
+  .dark .border-stone-200,
+  .dark .border-stone-300 {
+    @apply border-slate-700;
+  }
+  .dark .text-\[\#292640\],
+  .dark .text-slate-800 {
+    @apply text-slate-100;
+  }
+  .dark .text-slate-600,
+  .dark .text-slate-500 {
+    @apply text-slate-300;
+  }
+  .dark input,
+  .dark select,
+  .dark textarea {
+    @apply border-slate-600 bg-slate-800 text-slate-100;
+  }
+  .dark input::placeholder,
+  .dark textarea::placeholder {
+    @apply text-slate-400;
+  }
+  .dark tr:hover {
+    @apply bg-slate-700/50;
+  }
+  .dark table,
+  .dark tbody,
+  .dark tbody tr {
+    color: #f8fafc;
+  }
+  .dark thead {
+    color: #bfdbfe;
+  }
+  .dark label {
+    color: #e2e8f0;
+  }
+}
+
+/* Mobile portal pages: preserve breathing room and turn dense controls into
+   easy-to-scan stacks without changing the desktop sidebar or page structure. */
+@media (max-width: 640px) {
+  main[data-portal] {
+    padding-left: 0.75rem !important;
+    padding-right: 0.75rem !important;
+  }
+
+  main[data-portal] > header {
+    margin-left: -0.75rem !important;
+    margin-right: -0.75rem !important;
+    padding-left: 0.75rem !important;
+    padding-right: 0.75rem !important;
+  }
+
+  main[data-portal] > div.mt-3 > div {
+    padding: 0.875rem !important;
+  }
+
+  main[data-portal] > div.mt-3 h1 {
+    white-space: normal;
+    font-size: 1.35rem;
+  }
+
+  [data-academic-calendar] {
+    margin-top: 0.75rem !important;
+  }
+
+  [data-academic-calendar] aside {
+    padding: 1rem;
+  }
+
+  [data-academic-calendar] .grid.grid-cols-7 > div {
+    min-width: 0;
+  }
+}
