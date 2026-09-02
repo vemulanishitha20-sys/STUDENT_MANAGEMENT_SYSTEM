@@ -3,6 +3,8 @@ import { ArrowLeft, BookOpen, CalendarDays, Check, Search, X } from "lucide-reac
 import ConfirmDialog from "./ConfirmDialog";
 import AttendanceCalendar from "./AttendanceCalendar";
 import { supabase } from "../lib/data";
+import useAcademicHolidays from "../hooks/useAcademicHolidays";
+import Toast from "./Toast";
 
 export default function AdminAttendance({ teachers, students }) {
   const [teacher, setTeacher] = useState(null);
@@ -17,11 +19,18 @@ export default function AdminAttendance({ teachers, students }) {
   const [saving, setSaving] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [message, setMessage] = useState("");
+  const [departmentFilter, setDepartmentFilter] = useState("");
+  const [yearFilter, setYearFilter] = useState("");
+  const holidays = useAcademicHolidays();
 
-  const assignments = useMemo(
-    () => teacher?.teacher_subjects?.map((item) => item.subjects).filter(Boolean) || [],
-    [teacher],
-  );
+  const departments = useMemo(() => [...new Set(students.map((item) => item.department).filter(Boolean))].sort(), [students]);
+  const years = useMemo(() => [...new Set(students.map((item) => Number(item.year)).filter(Boolean))].sort((a, b) => a - b), [students]);
+  const classOptions = useMemo(() => teachers
+    .filter((item) => item.is_active !== false)
+    .flatMap((item) => (item.teacher_subjects || []).map(({ subjects }) => ({ teacher: item, subject: subjects })).filter(({ subject }) => subject))
+    .filter(({ subject }) => !departmentFilter || subject.department === departmentFilter)
+    .filter(({ subject }) => !yearFilter || Number(subject.year) === Number(yearFilter)),
+  [teachers, departmentFilter, yearFilter]);
   const classStudents = useMemo(
     () => students
       .filter((student) => subject && student.is_active !== false && student.department === subject.department && Number(student.year) === Number(subject.year))
@@ -55,25 +64,26 @@ export default function AdminAttendance({ teachers, students }) {
 
   const isSunday = new Date(`${date}T00:00:00`).getDay() === 0;
   const isFuture = date > new Date().toLocaleDateString("en-CA");
+  const isHoliday = holidays.isHoliday(date);
   const allMarked = classStudents.length > 0 && classStudents.every((student) => draft[student.id] !== undefined);
   const changed = classStudents.some((student) => draft[student.id] !== undefined && draft[student.id] !== saved[student.id]);
 
-  const chooseTeacher = (nextTeacher) => {
-    setTeacher(nextTeacher);
-    setSubject(null);
+  const chooseClass = (option) => {
+    setTeacher(option.teacher);
+    setSubject(option.subject);
     setQuery("");
   };
   const mark = (id, present) => {
-    if (isSunday || isFuture || locked) return;
+    if (isSunday || isFuture || isHoliday || locked) return;
     setDraft((current) => ({ ...current, [id]: present }));
   };
   const markAllPresent = () => {
-    if (isSunday || isFuture || locked) return;
+    if (isSunday || isFuture || isHoliday || locked) return;
     setDraft((current) => ({ ...current, ...Object.fromEntries(classStudents.map((student) => [student.id, true])) }));
   };
   const save = async () => {
     setConfirming(false);
-    if (!supabase || !allMarked || isSunday || isFuture || locked) return;
+    if (!supabase || !allMarked || isSunday || isFuture || isHoliday || locked) return;
     setSaving(true);
     const { error } = await supabase.rpc("save_subject_attendance", {
       p_teacher_id: teacher.id,
@@ -90,19 +100,25 @@ export default function AdminAttendance({ teachers, students }) {
 
   return (
     <section>
-      {message && <button type="button" onClick={() => setMessage("")} className="mb-4 w-full rounded-xl bg-slate-800 px-4 py-3 text-center font-semibold text-white">{message}</button>}
-      {!teacher ? (
+      <Toast message={message} onClose={() => setMessage("")} />
+      {!subject ? (
         <>
-          <h2 className="mb-5 text-2xl">Choose a teacher</h2>
+          <div className="mb-5 flex flex-wrap items-end gap-3 rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-800">
+            <div className="mr-auto"><h2 className="text-2xl">Choose a class</h2><p className="mt-1 text-sm text-slate-500 dark:text-slate-300">Filter by branch and year, then select the teacher and class.</p></div>
+            <label className="text-sm font-semibold">Branch<select value={departmentFilter} onChange={(event) => setDepartmentFilter(event.target.value)} className="mt-1 block h-11 min-w-36 rounded-xl border border-slate-200 bg-white px-3 dark:border-slate-600 dark:bg-slate-900"><option value="">All branches</option>{departments.map((item) => <option key={item}>{item}</option>)}</select></label>
+            <label className="text-sm font-semibold">Year<select value={yearFilter} onChange={(event) => setYearFilter(event.target.value)} className="mt-1 block h-11 min-w-32 rounded-xl border border-slate-200 bg-white px-3 dark:border-slate-600 dark:bg-slate-900"><option value="">All years</option>{years.map((item) => <option key={item} value={item}>Year {item}</option>)}</select></label>
+          </div>
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            {teachers.filter((item) => item.is_active !== false).map((item) => (
-              <button key={item.id} onClick={() => chooseTeacher(item)} className="rounded-2xl border border-slate-200 bg-white p-5 text-left transition hover:-translate-y-1 hover:border-violet-400 hover:shadow-lg dark:border-slate-700 dark:bg-slate-800">
+            {classOptions.map((item) => (
+              <button key={`${item.teacher.id}-${item.subject.code}`} onClick={() => chooseClass(item)} className="rounded-2xl border border-slate-200 bg-white p-5 text-left transition hover:-translate-y-1 hover:border-violet-400 hover:shadow-lg dark:border-slate-700 dark:bg-slate-800">
                 <span className="grid size-11 place-items-center rounded-xl bg-violet-100 text-campus dark:bg-violet-950 dark:text-violet-200"><BookOpen /></span>
-                <h3 className="mt-4 text-xl">{item.name}</h3>
-                <p className="mt-1 font-mono text-sm text-violet-600 dark:text-violet-300">{item.id}</p>
-                <p className="mt-3 text-sm text-slate-500 dark:text-slate-300">{item.teacher_subjects?.length || 0} assigned subjects</p>
+                <h3 className="mt-4 text-xl">{item.subject.name}</h3>
+                <p className="mt-1 font-bold text-violet-700 dark:text-violet-300">{item.teacher.name}</p>
+                <p className="mt-2 text-sm text-slate-500 dark:text-slate-300">{item.subject.code} · {item.subject.department} · Year {item.subject.year}</p>
+                <p className="mt-3 text-xs font-semibold uppercase tracking-wide text-slate-400">{students.filter((student) => student.is_active !== false && student.department === item.subject.department && Number(student.year) === Number(item.subject.year)).length} students</p>
               </button>
             ))}
+            {!classOptions.length && <p className="rounded-xl bg-slate-50 p-5 text-slate-500 dark:bg-slate-800 dark:text-slate-300">No teacher classes match these filters.</p>}
           </div>
         </>
       ) : !subject ? (
@@ -143,6 +159,7 @@ export default function AdminAttendance({ teachers, students }) {
                             }}
                             markedDates={markedDates}
                             onClose={() => setCalendarOpen(false)}
+                            holidayRanges={holidays.ranges}
                           />
                     </div>
                   )}
@@ -151,19 +168,19 @@ export default function AdminAttendance({ teachers, students }) {
               </div>
             </div>
           </div>
-          {(isSunday || isFuture) && <p className="mt-4 rounded-xl border border-red-300 bg-red-50 p-3 text-center font-bold text-red-700">Attendance cannot be marked for this date.</p>}
-          <div className="mt-4 flex flex-wrap items-center justify-between gap-3"><p className="text-sm text-slate-500 dark:text-slate-300">Mark everyone present, then change individual students to absent if required.</p><button type="button" onClick={markAllPresent} disabled={!classStudents.length || isSunday || isFuture || locked} className="inline-flex h-10 items-center gap-2 rounded-xl bg-emerald-600 px-4 font-bold text-white shadow-sm transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"><Check size={17} /> Mark all present</button></div>
+          {(isSunday || isFuture || isHoliday) && <p className="mt-4 rounded-xl border border-red-300 bg-red-50 p-3 text-center font-bold text-red-700">{isHoliday ? `${holidays.holidayName(date)} is an official holiday. Attendance cannot be marked.` : "Attendance cannot be marked for this date."}</p>}
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-3"><p className="text-sm text-slate-500 dark:text-slate-300">Mark everyone present, then change individual students to absent if required.</p><button type="button" onClick={markAllPresent} disabled={!classStudents.length || isSunday || isFuture || isHoliday || locked} className="inline-flex h-10 items-center gap-2 rounded-xl bg-emerald-600 px-4 font-bold text-white shadow-sm transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"><Check size={17} /> Mark all present</button></div>
           <div className="mt-3 overflow-hidden rounded-2xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800">
             <div className="hidden grid-cols-[150px_1fr_120px_120px] gap-3 bg-slate-50 px-5 py-3 text-xs font-bold uppercase text-slate-500 dark:bg-slate-900 md:grid"><span>Campus ID</span><span>Name</span><span className="text-center">Present</span><span className="text-center">Absent</span></div>
             {classStudents.map((student) => (
               <div key={student.id} className="grid gap-3 border-t border-slate-100 px-5 py-4 dark:border-slate-700 md:grid-cols-[150px_1fr_120px_120px] md:items-center">
                 <span className="font-mono text-sm font-semibold text-violet-600">{student.id}</span><b>{student.name}</b>
-                <button onClick={() => mark(student.id, true)} disabled={isSunday || isFuture || locked} className={`flex justify-center gap-1 rounded-xl py-2.5 font-bold disabled:opacity-40 ${draft[student.id] === true ? "bg-emerald-600 text-white" : "bg-emerald-100 text-emerald-800"}`}><Check size={18} /> Present</button>
-                <button onClick={() => mark(student.id, false)} disabled={isSunday || isFuture || locked} className={`flex justify-center gap-1 rounded-xl py-2.5 font-bold disabled:opacity-40 ${draft[student.id] === false ? "bg-red-600 text-white" : "bg-red-100 text-red-700"}`}><X size={18} /> Absent</button>
+                <button onClick={() => mark(student.id, true)} disabled={isSunday || isFuture || isHoliday || locked} className={`flex justify-center gap-1 rounded-xl py-2.5 font-bold disabled:opacity-40 ${draft[student.id] === true ? "bg-emerald-600 text-white" : "bg-emerald-100 text-emerald-800"}`}><Check size={18} /> Present</button>
+                <button onClick={() => mark(student.id, false)} disabled={isSunday || isFuture || isHoliday || locked} className={`flex justify-center gap-1 rounded-xl py-2.5 font-bold disabled:opacity-40 ${draft[student.id] === false ? "bg-red-600 text-white" : "bg-red-100 text-red-700"}`}><X size={18} /> Absent</button>
               </div>
             ))}
           </div>
-          <div className="sticky bottom-4 mt-4 flex justify-center"><button onClick={() => setConfirming(true)} disabled={saving || !allMarked || !changed || isSunday || isFuture || locked} className="rounded-xl bg-campus px-8 py-3 font-bold text-white shadow-xl disabled:opacity-60">{locked ? "Attendance saved" : saving ? "Saving..." : "Save attendance"}</button></div>
+          <div className="sticky bottom-4 mt-4 flex justify-center"><button onClick={() => setConfirming(true)} disabled={saving || !allMarked || !changed || isSunday || isFuture || isHoliday || locked} className="rounded-xl bg-campus px-8 py-3 font-bold text-white shadow-xl disabled:opacity-60">{locked ? "Attendance saved" : saving ? "Saving..." : "Save attendance"}</button></div>
         </>
       )}
       {confirming && <ConfirmDialog title="Save attendance?" message="Do you want to save attendance for" highlight={new Date(`${date}T00:00:00`).toLocaleDateString("en-GB")} messageAfter="Attendance cannot be changed after saving." confirmLabel="Yes, save" tone="primary" onConfirm={save} onCancel={() => setConfirming(false)} />}

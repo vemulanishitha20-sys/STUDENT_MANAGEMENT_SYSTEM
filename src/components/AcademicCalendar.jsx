@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { CalendarDays, ChevronLeft, ChevronRight, Pencil, Plus, Trash2, X } from "lucide-react";
 import { supabase } from "../lib/data";
+import Toast from "./Toast";
 
 const STORE = "campus-academic-events";
 const TYPES = ["Holiday", "Exam", "Academic Event", "Important Date"];
 const ADMIN_KINDS = ["Holiday", "Exam", "Semester Date", "College Event", "Department Event", "Deadline", "Parent-Teacher Meeting"];
-const TEACHER_KINDS = ["Extra Class", "Seminar", "Guest Lecture", "Project Presentation", "Meeting"];
+const TEACHER_KINDS = [];
 const COLORS = {
   Holiday: "bg-emerald-500",
   Exam: "bg-blue-500",
@@ -25,7 +26,7 @@ export default function AcademicCalendar({ role, session }) {
   const [form, setForm] = useState(emptyForm);
   const [message, setMessage] = useState("");
   const [remoteAvailable, setRemoteAvailable] = useState(true);
-  const canCreate = role === "admin" || role === "teacher";
+  const canCreate = role === "admin";
 
   useEffect(() => {
     if (editing === undefined) return;
@@ -61,11 +62,11 @@ export default function AcademicCalendar({ role, session }) {
   const today = iso(new Date());
   const monthEnd = iso(lastDay);
   const upcoming = visible.filter((event) => event.end_date >= today).slice(0, 5);
-  const canManage = (event) => role === "admin" || (role === "teacher" && event.creator_role === "teacher" && event.creator_id === session?.id);
+  const canManage = () => role === "admin";
 
   const openForm = (event = null) => {
     setEditing(event);
-    setForm(event ? { ...event, year: event.year || "", department: event.department || "" } : { ...emptyForm, kind: role === "teacher" ? TEACHER_KINDS[0] : ADMIN_KINDS[0], start_date: today, end_date: today, department: role === "teacher" ? session?.department || "" : "" });
+    setForm(event ? { ...event, year: event.year || "", department: event.department || "" } : { ...emptyForm, kind: ADMIN_KINDS[0], start_date: today, end_date: today, department: "" });
   };
   const saveEvent = async (event) => {
     event.preventDefault();
@@ -93,7 +94,7 @@ export default function AcademicCalendar({ role, session }) {
           <div />
           {canCreate && <button onClick={() => openForm()} className="inline-flex h-11 items-center gap-2 rounded-xl bg-campus px-5 font-bold text-white shadow-sm"><Plus size={18} /> Add event</button>}
         </div>
-        {message && <button onClick={() => setMessage("")} className="mt-4 w-full rounded-xl bg-violet-50 px-4 py-3 text-left text-sm font-semibold text-violet-800 dark:bg-violet-950 dark:text-violet-200">{message}</button>}
+        <Toast message={message} onClose={() => setMessage("")} />
         <div className="mt-4 flex flex-wrap gap-4 rounded-xl bg-white px-4 py-3 text-xs font-semibold text-slate-600 shadow-sm dark:bg-slate-800 dark:text-slate-300">{TYPES.map((type) => <span key={type} className="flex items-center gap-2"><i className={`size-2.5 rounded-full ${styleFor(type)}`} />{type}</span>)}</div>
         <div className="mt-3 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-800">
           <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3 dark:border-slate-700 sm:px-5">

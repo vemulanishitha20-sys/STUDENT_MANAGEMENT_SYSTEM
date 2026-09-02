@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Check, LogOut, X } from "lucide-react";
 import Brand from "./Brand";
 import { supabase } from "../lib/data";
+import Toast from "./Toast";
 const percent = (s) =>
   s.total_classes
     ? Math.round((s.attended_classes / s.total_classes) * 100)
@@ -78,11 +79,7 @@ export default function MemberHome({ session, logout }) {
               </span>
             ))}
           </div>
-          {message && (
-            <div className="my-4 rounded-xl bg-violet-100 p-3 text-campus">
-              {message}
-            </div>
-          )}
+          <Toast message={message} onClose={() => setMessage("")} />
           <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {students.map((student) => (
               <article

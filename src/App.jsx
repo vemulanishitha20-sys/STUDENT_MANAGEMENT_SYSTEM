@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Menu, Moon, Sparkles, Sun } from "lucide-react";
+import { Menu, Moon, Sun } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import Login from "./components/Login";
 import Sidebar from "./components/Sidebar";
@@ -8,6 +8,7 @@ import TeacherPortal from "./components/TeacherPortal";
 import ConfirmDialog from "./components/ConfirmDialog";
 import PageIntro from "./components/PageIntro";
 import ProfileMenu from "./components/ProfileMenu";
+import Toast from "./components/Toast";
 import AppRoutes from "./routes/AppRoutes";
 import {
   ADMIN_CREDENTIALS,
@@ -333,12 +334,7 @@ export default function App() {
           editTeacherSubjects={editTeacherSubjects}
         />
       </main>
-      {toast && (
-        <div className="fixed bottom-5 right-5 z-[80] flex items-center gap-2 rounded-xl bg-slate-800 px-5 py-3 text-white shadow-xl">
-          <Sparkles size={18} />
-          {toast}
-        </div>
-      )}
+      <Toast message={toast} />
       {logoutDialog}
     </div>
   );

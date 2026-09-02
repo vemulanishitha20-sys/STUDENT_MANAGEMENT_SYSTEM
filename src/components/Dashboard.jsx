@@ -56,7 +56,7 @@ export default function Dashboard({ data }) {
         supabase.from("students").select("id,department,year", { count: "exact" }),
         supabase.from("teachers").select("id", { count: "exact", head: true }),
         supabase.from("class_schedule").select("id", { count: "exact", head: true }),
-        supabase.rpc("dashboard_latest_attendance_summary"),
+        supabase.rpc("dashboard_latest_attendance_summary", { p_department: branch === "all" ? null : branch, p_year: year === "all" ? null : Number(year) }),
         supabase.rpc("dashboard_attendance_summary", { p_date: today }),
         supabase.from("announcements").select("id,title,message,created_at").order("created_at", { ascending: false }).limit(3),
         supabase.from("academic_events").select("id,title,kind,start_date,created_at").gte("end_date", today).order("start_date").limit(4),
@@ -82,10 +82,10 @@ export default function Dashboard({ data }) {
     const refreshTimer = window.setInterval(load, 30000);
     window.addEventListener("focus", load);
     return () => { window.clearInterval(refreshTimer); window.removeEventListener("focus", load); };
-  }, [data.students.length, data.teachers.length]);
+  }, [data.students.length, data.teachers.length, branch, year]);
 
   const branches = useMemo(() => [...new Set((overview.roster || []).map((student) => student.department).filter(Boolean))].sort(), [overview.roster]);
-  const filteredAttendance = useMemo(() => overview.attendance.filter((row) => (branch === "all" || row.department === branch) && (year === "all" || Number(row.year) === Number(year))), [overview.attendance, branch, year]);
+  const filteredAttendance = overview.attendance;
   const present = filteredAttendance.reduce((total, row) => total + Number(row.present_count || 0), 0);
   const absent = filteredAttendance.reduce((total, row) => total + Number(row.absent_count || 0), 0);
   const recorded = present + absent;
@@ -129,7 +129,7 @@ export default function Dashboard({ data }) {
             <h2 className="text-xl">Attendance Overview</h2>
             <div className="flex gap-2"><select value={branch} onChange={(event) => setBranch(event.target.value)} className="h-9 rounded-lg border border-slate-200 bg-white px-2 text-sm font-semibold dark:border-slate-600 dark:bg-slate-800"><option value="all">All branches</option>{branches.map((item) => <option key={item}>{item}</option>)}</select><select value={year} onChange={(event) => setYear(event.target.value)} className="h-9 rounded-lg border border-slate-200 bg-white px-2 text-sm font-semibold dark:border-slate-600 dark:bg-slate-800"><option value="all">All years</option>{[1,2,3,4].map((item) => <option key={item} value={item}>Year {item}</option>)}</select></div>
           </div>
-          <p className="mt-1 text-sm text-slate-500 dark:text-slate-300">{overview.attendanceDate ? `Latest saved attendance · ${formatDate(overview.attendanceDate)}` : "No attendance has been saved yet"}</p>
+          <p className="mt-1 text-sm text-slate-500 dark:text-slate-300">{overview.attendanceDate ? `Latest saved attendance · ${formatDate(overview.attendanceDate)} · ${branch === "all" ? "All branches" : branch} · ${year === "all" ? "All years" : `Year ${year}`}` : "No attendance is available for the selected filters"}</p>
           <div className="mt-5 flex items-center justify-center gap-7">
             <div className="grid size-32 shrink-0 place-items-center rounded-full" style={{ background: `conic-gradient(#10b981 ${attendancePercent * 3.6}deg, #e2e8f0 0deg)` }}>
               <div className="grid size-24 place-items-center rounded-full bg-white text-center dark:bg-slate-800"><strong className="text-2xl text-emerald-600">{attendancePercent}%</strong></div>

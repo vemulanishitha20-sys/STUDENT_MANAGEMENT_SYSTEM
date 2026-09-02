@@ -452,16 +452,69 @@ language sql stable security definer set search_path = public as $$
 $$;
 revoke all on function public.dashboard_latest_attendance_summary() from public;
 grant execute on function public.dashboard_latest_attendance_summary() to anon, authenticated;
+
+create or replace function public.dashboard_latest_attendance_summary(p_department text,p_year integer)
+returns table(recorded_date date,department text,year integer,present_count bigint,absent_count bigint,recorded_count bigint)
+language sql stable security definer set search_path=public as $$
+  with latest as(select max(attendance_date) attendance_date from public.attendance_records)
+  select latest.attendance_date,s.department,s.year,count(*) filter(where ar.present),count(*) filter(where not ar.present),count(*)
+  from latest join public.attendance_records ar on ar.attendance_date=latest.attendance_date
+  join public.students s on s.id=ar.student_id
+  where (p_department is null or s.department=p_department) and (p_year is null or s.year=p_year)
+  group by latest.attendance_date,s.department,s.year order by s.department,s.year;
+$$;
+revoke all on function public.dashboard_latest_attendance_summary(text,integer) from public;
+grant execute on function public.dashboard_latest_attendance_summary(text,integer) to anon,authenticated;
+
+create or replace function public.student_subject_faculty(p_student_id text)
+returns table(subject_code text, subject_name text, faculty_id text, faculty_name text)
+language sql stable security definer set search_path = public as $$
+  select sub.code, sub.name, t.id, t.name
+  from public.students s
+  join public.subjects sub on sub.department=s.department and sub.year=s.year
+  left join public.teacher_subjects ts on ts.subject_code=sub.code
+  left join public.teachers t on t.id=ts.teacher_id and t.is_active
+  where s.id=p_student_id and s.is_active
+  order by sub.name;
+$$;
+revoke all on function public.student_subject_faculty(text) from public;
+grant execute on function public.student_subject_faculty(text) to anon, authenticated;
+
+-- Attendance is stored and student totals are updated atomically. Official
+-- Admin holidays are rejected in the database as well as in the interface.
+create or replace function public.save_subject_attendance(p_teacher_id text,p_subject_code text,p_date date,p_attendance jsonb)
+returns table(student_id text,attended_classes integer,total_classes integer)
+language plpgsql security definer set search_path=public,extensions as $$
+declare v_expected integer; v_supplied integer; v_item jsonb; v_student_id text; v_present boolean;
+begin
+  if p_date>current_date then raise exception 'Future attendance cannot be marked'; end if;
+  if extract(dow from p_date)=0 then raise exception 'Attendance cannot be marked on Sunday'; end if;
+  if exists(select 1 from public.academic_events ae join public.subjects sub on sub.code=p_subject_code where ae.creator_role='admin' and ae.kind='Holiday' and p_date between ae.start_date and ae.end_date and (ae.department is null or ae.department=sub.department) and (ae.year is null or ae.year=sub.year)) then raise exception 'Attendance cannot be marked on an official holiday'; end if;
+  if exists(select 1 from public.attendance_records where teacher_id=p_teacher_id and subject_code=p_subject_code and attendance_date=p_date) then raise exception 'Attendance for this date has already been saved and cannot be changed'; end if;
+  if not exists(select 1 from public.teacher_subjects ts join public.teachers t on t.id=ts.teacher_id where ts.teacher_id=p_teacher_id and ts.subject_code=p_subject_code and t.is_active) then raise exception 'This subject is not assigned to this active teacher'; end if;
+  select count(*) into v_expected from public.students s join public.subjects sub on sub.department=s.department and sub.year=s.year where sub.code=p_subject_code and s.is_active;
+  select count(distinct item->>'student_id') into v_supplied from jsonb_array_elements(p_attendance) item where item?'student_id' and item?'present' and jsonb_typeof(item->'present')='boolean';
+  if v_expected=0 or v_supplied<>v_expected then raise exception 'Mark every student present or absent before saving'; end if;
+  for v_item in select value from jsonb_array_elements(p_attendance) loop
+    v_student_id:=v_item->>'student_id'; v_present:=(v_item->>'present')::boolean;
+    if not exists(select 1 from public.students s join public.subjects sub on sub.department=s.department and sub.year=s.year where sub.code=p_subject_code and s.id=v_student_id and s.is_active) then raise exception 'Student % is not in this assigned subject class',v_student_id; end if;
+    insert into public.attendance_records(teacher_id,subject_code,student_id,attendance_date,present) values(p_teacher_id,p_subject_code,v_student_id,p_date,v_present);
+    update public.students s set total_classes=s.total_classes+1,attended_classes=s.attended_classes+(case when v_present then 1 else 0 end) where s.id=v_student_id;
+  end loop;
+  return query select s.id,s.attended_classes,s.total_classes from public.students s where s.id in(select item->>'student_id' from jsonb_array_elements(p_attendance) item);
+end $$;
+revoke all on function public.save_subject_attendance(text,text,date,jsonb) from public;
+grant execute on function public.save_subject_attendance(text,text,date,jsonb) to anon,authenticated;
 alter table academic_events enable row level security;
 
 drop policy if exists "Calendar events are readable" on academic_events;
 create policy "Calendar events are readable" on academic_events for select to anon, authenticated using (true);
 drop policy if exists "Calendar events can be created" on academic_events;
-create policy "Calendar events can be created" on academic_events for insert to anon, authenticated with check (true);
+create policy "Calendar events can be created" on academic_events for insert to anon, authenticated with check (creator_role = 'admin');
 drop policy if exists "Calendar events can be updated" on academic_events;
-create policy "Calendar events can be updated" on academic_events for update to anon, authenticated using (true) with check (true);
+create policy "Calendar events can be updated" on academic_events for update to anon, authenticated using (creator_role = 'admin') with check (creator_role = 'admin');
 drop policy if exists "Calendar events can be deleted" on academic_events;
-create policy "Calendar events can be deleted" on academic_events for delete to anon, authenticated using (true);
+create policy "Calendar events can be deleted" on academic_events for delete to anon, authenticated using (creator_role = 'admin');
 
 revoke all on table academic_events from anon, authenticated;
 grant select, insert, update, delete on table academic_events to anon, authenticated;

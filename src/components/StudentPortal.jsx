@@ -20,6 +20,8 @@ import AcademicCalendar from "./AcademicCalendar";
 import UpcomingEvents from "./UpcomingEvents";
 import PageIntro from "./PageIntro";
 import ProfileMenu from "./ProfileMenu";
+import StudentSubjects from "./StudentSubjects";
+import Toast from "./Toast";
 
 const percentage = (attended, total) =>
   total ? Math.round((Number(attended) / Number(total)) * 100) : 0;
@@ -89,8 +91,8 @@ export default function StudentPortal({ session, logout }) {
   );
 
   useEffect(() => {
-    const load = async () => {
-      setLoading(true);
+    const load = async (showLoading = false) => {
+      if (showLoading) setLoading(true);
       const [studentResult, subjectResult] = await Promise.all([
         supabase.from("students").select("*").eq("id", session.id).single(),
         supabase.rpc("student_subject_attendance", {
@@ -106,9 +108,14 @@ export default function StudentPortal({ session, logout }) {
       setLoading(false);
     };
     if (supabase) {
-      load();
-      window.addEventListener("focus", load);
-      return () => window.removeEventListener("focus", load);
+      load(true);
+      const refreshTimer = window.setInterval(() => load(false), 15000);
+      const refreshOnFocus = () => load(false);
+      window.addEventListener("focus", refreshOnFocus);
+      return () => {
+        window.clearInterval(refreshTimer);
+        window.removeEventListener("focus", refreshOnFocus);
+      };
     }
   }, [session.id]);
 
@@ -157,6 +164,7 @@ export default function StudentPortal({ session, logout }) {
           {[
             ["dashboard", LayoutDashboard, "Dashboard"],
             ["attendance", CalendarCheck, "Attendance"],
+            ["subjects", BookOpen, "Subjects"],
             ["schedule", CalendarDays, "Class Schedule"],
             ["calendar", CalendarRange, "Academic Calendar"],
             ["announcements", Bell, "Announcements"],
@@ -180,7 +188,7 @@ export default function StudentPortal({ session, logout }) {
           </button>
           <div className="min-w-0 flex-1">
             {page !== "dashboard" && <h1 className="truncate text-2xl sm:text-3xl">
-              {page === "attendance" ? "Subject Attendance" : page === "schedule" ? "Class Schedule" : page === "calendar" ? "Academic Calendar" : "Announcements"}
+              {page === "attendance" ? "Subject Attendance" : page === "subjects" ? "Subjects" : page === "schedule" ? "Class Schedule" : page === "calendar" ? "Academic Calendar" : "Announcements"}
             </h1>}
           </div>
           <button type="button" onClick={() => setDark((value) => !value)} className="grid size-11 shrink-0 place-items-center rounded-full border border-slate-200 bg-white text-slate-700 shadow-sm dark:border-slate-700 dark:bg-slate-800 dark:text-amber-300" aria-label="Switch theme">
@@ -192,14 +200,16 @@ export default function StudentPortal({ session, logout }) {
         {page !== "dashboard" && (
           <PageIntro
             onBack={() => navigate("dashboard")}
-            title={page === "attendance" ? "Subject Attendance" : page === "schedule" ? "Class Schedule" : page === "calendar" ? "Academic Calendar" : "Announcements"}
-            subtitle={page === "attendance" ? "Track your attendance in every subject." : page === "schedule" ? "View your weekly class timetable." : page === "calendar" ? "View holidays, exams and important academic dates." : "Stay informed with the latest campus updates."}
+            title={page === "attendance" ? "Subject Attendance" : page === "subjects" ? "My Subjects" : page === "schedule" ? "Class Schedule" : page === "calendar" ? "Academic Calendar" : "Announcements"}
+            subtitle={page === "attendance" ? "Track your attendance in every subject." : page === "subjects" ? "View your subjects and assigned faculty members." : page === "schedule" ? "View your weekly class timetable." : page === "calendar" ? "View holidays, exams and important academic dates." : "Stay informed with the latest campus updates."}
           />
         )}
 
-        {message && <div className="fixed left-1/2 top-5 z-[70] w-[min(90%,420px)] -translate-x-1/2 rounded-xl bg-red-600 px-5 py-3 text-center font-semibold text-white shadow-xl">{message}</div>}
+        <Toast message={message} tone="error" onClose={() => setMessage("")} />
 
-        {page === "announcements" ? (
+        {page === "subjects" ? (
+          <StudentSubjects student={student} />
+        ) : page === "announcements" ? (
           <section className="mt-6"><AnnouncementCenter role="student" userId={session.id} onUnreadChange={setUnreadAnnouncements} /></section>
         ) : page === "schedule" ? (
           <section className="mt-6"><Schedule role="student" session={student} /></section>

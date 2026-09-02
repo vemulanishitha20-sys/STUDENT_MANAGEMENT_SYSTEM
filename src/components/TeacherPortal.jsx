@@ -28,6 +28,8 @@ import AcademicCalendar from "./AcademicCalendar";
 import UpcomingEvents from "./UpcomingEvents";
 import PageIntro from "./PageIntro";
 import ProfileMenu from "./ProfileMenu";
+import Toast from "./Toast";
+import useAcademicHolidays from "../hooks/useAcademicHolidays";
 
 const percentage = (student) =>
   student.total_classes
@@ -68,6 +70,7 @@ export default function TeacherPortal({ session, logout }) {
     [message, setMessage] = useState(""),
     [unreadAnnouncements, setUnreadAnnouncements] = useState(false),
     [loading, setLoading] = useState(true);
+  const holidays = useAcademicHolidays();
 
   useEffect(() => {
     const load = async () => {
@@ -168,6 +171,7 @@ export default function TeacherPortal({ session, logout }) {
   const isSunday =
     attendanceDate && new Date(`${attendanceDate}T00:00:00`).getDay() === 0;
   const isFuture = attendanceDate > new Date().toLocaleDateString("en-CA");
+  const isHoliday = holidays.isHoliday(attendanceDate);
   const attendanceLocked = markedDates.includes(attendanceDate);
   const allStudentsMarked =
     subjectStudents.length > 0 &&
@@ -181,6 +185,7 @@ export default function TeacherPortal({ session, logout }) {
   );
 
   const mark = (student, present) => {
+    if (isHoliday) return setMessage(`${holidays.holidayName(attendanceDate)} is an official holiday.`);
     if (isSunday) return setMessage("Attendance cannot be marked on Sunday.");
     if (isFuture) return setMessage("Future attendance cannot be marked.");
     if (attendanceLocked)
@@ -188,6 +193,7 @@ export default function TeacherPortal({ session, logout }) {
     setAttendanceDraft((current) => ({ ...current, [student.id]: present }));
   };
   const markAllPresent = () => {
+    if (isHoliday) return setMessage(`${holidays.holidayName(attendanceDate)} is an official holiday.`);
     if (isSunday) return setMessage("Attendance cannot be marked on Sunday.");
     if (isFuture) return setMessage("Future attendance cannot be marked.");
     if (attendanceLocked) return setMessage("Saved attendance cannot be changed.");
@@ -196,6 +202,7 @@ export default function TeacherPortal({ session, logout }) {
 
   const saveAttendance = async () => {
     setConfirmingSave(false);
+    if (isHoliday) return setMessage(`${holidays.holidayName(attendanceDate)} is an official holiday.`);
     if (isSunday) return setMessage("Attendance cannot be marked on Sunday.");
     if (isFuture) return setMessage("Future attendance cannot be marked.");
     if (attendanceLocked)
@@ -364,11 +371,7 @@ export default function TeacherPortal({ session, logout }) {
           />
         )}
 
-        {message && (
-          <div className="fixed left-1/2 top-5 z-[70] w-[min(90%,420px)] -translate-x-1/2 rounded-xl bg-slate-900 px-5 py-3 text-center font-semibold text-white shadow-xl dark:bg-violet-600">
-            {message}
-          </div>
-        )}
+        <Toast message={message} onClose={() => setMessage("")} />
 
         {page === "announcements" && (
           <section className="mt-6">
@@ -550,6 +553,7 @@ export default function TeacherPortal({ session, logout }) {
                               }}
                               markedDates={markedDates}
                               onClose={() => setCalendarOpen(false)}
+                              holidayRanges={holidays.ranges}
                             />
                           </div>
                         )}
@@ -615,7 +619,7 @@ export default function TeacherPortal({ session, logout }) {
                     date.
                   </div>
                 )}
-                <div className="mt-4 flex flex-wrap items-center justify-between gap-3"><p className="text-sm text-slate-500 dark:text-slate-300">Mark everyone present, then change individual students to absent if required.</p><button type="button" onClick={markAllPresent} disabled={!subjectStudents.length || isSunday || isFuture || attendanceLocked} className="inline-flex h-10 items-center gap-2 rounded-xl bg-emerald-600 px-4 font-bold text-white shadow-sm transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"><Check size={17} /> Mark all present</button></div>
+                <div className="mt-4 flex flex-wrap items-center justify-between gap-3"><p className="text-sm text-slate-500 dark:text-slate-300">Mark everyone present, then change individual students to absent if required.</p><button type="button" onClick={markAllPresent} disabled={!subjectStudents.length || isSunday || isFuture || isHoliday || attendanceLocked} className="inline-flex h-10 items-center gap-2 rounded-xl bg-emerald-600 px-4 font-bold text-white shadow-sm transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"><Check size={17} /> Mark all present</button></div>
                 <div className="mt-3 h-[46vh] min-h-72 overflow-x-hidden overflow-y-auto overscroll-contain rounded-2xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800 sm:h-[52vh]">
                   <div className="sticky top-0 z-10 hidden grid-cols-[160px_minmax(220px,1fr)_120px_120px] gap-3 bg-slate-50 px-5 py-3 text-xs font-bold uppercase tracking-wider text-slate-500 dark:bg-slate-900 dark:text-slate-300 md:grid">
                     <span>Campus ID</span>
@@ -663,7 +667,7 @@ export default function TeacherPortal({ session, logout }) {
                       <div className="grid grid-cols-2 gap-2 md:contents">
                         <button
                           onClick={() => mark(student, true)}
-                          disabled={isSunday || isFuture || attendanceLocked}
+                          disabled={isSunday || isFuture || isHoliday || attendanceLocked}
                           className={`flex items-center justify-center gap-1 rounded-xl py-2.5 font-bold disabled:cursor-not-allowed disabled:opacity-40 md:order-3 ${attendanceDraft[student.id] === true ? "bg-emerald-600 text-white ring-2 ring-emerald-300" : "bg-emerald-100 text-emerald-800"}`}
                         >
                           <Check size={18} />
@@ -671,7 +675,7 @@ export default function TeacherPortal({ session, logout }) {
                         </button>
                         <button
                           onClick={() => mark(student, false)}
-                          disabled={isSunday || isFuture || attendanceLocked}
+                          disabled={isSunday || isFuture || isHoliday || attendanceLocked}
                           className={`flex items-center justify-center gap-1 rounded-xl py-2.5 font-bold disabled:cursor-not-allowed disabled:opacity-40 md:order-4 ${attendanceDraft[student.id] === false ? "bg-red-600 text-white ring-2 ring-red-300" : "bg-red-100 text-red-700"}`}
                         >
                           <X size={18} />
@@ -684,7 +688,7 @@ export default function TeacherPortal({ session, logout }) {
                 <div className="sticky bottom-4 z-20 mt-4 flex justify-center">
                     <button
                       onClick={() => setConfirmingSave(true)}
-                      disabled={savingAttendance || !allStudentsMarked || isSunday || isFuture || attendanceLocked || !hasAttendanceChanges}
+                      disabled={savingAttendance || !allStudentsMarked || isSunday || isFuture || isHoliday || attendanceLocked || !hasAttendanceChanges}
                       className="rounded-xl bg-campus px-8 py-3 font-bold text-white shadow-xl hover:bg-violet-700 disabled:opacity-60"
                     >
                       {attendanceLocked

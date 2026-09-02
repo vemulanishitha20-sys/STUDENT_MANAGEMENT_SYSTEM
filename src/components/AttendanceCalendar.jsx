@@ -8,7 +8,7 @@ const toKey = (date) =>
   "-" +
   String(date.getDate()).padStart(2, "0");
 
-export default function AttendanceCalendar({ value, onChange, markedDates = [], onClose }) {
+export default function AttendanceCalendar({ value, onChange, markedDates = [], onClose, holidayRanges = [] }) {
   const selected = new Date(value + "T00:00:00");
   const [month, setMonth] = useState(
     () => new Date(selected.getFullYear(), selected.getMonth(), 1),
@@ -47,14 +47,15 @@ export default function AttendanceCalendar({ value, onChange, markedDates = [], 
           const sunday = date.getDay() === 0;
           const isSelected = key === value;
           const isMarked = marked.has(key);
+          const holiday = holidayRanges.find((item) => item.start_date <= key && item.end_date >= key);
           const future = key > today;
           const stateClass = isSelected
             ? "bg-campus text-white"
-            : sunday || future
+            : sunday || future || holiday
               ? "cursor-not-allowed text-red-300 line-through dark:text-red-800"
               : "hover:bg-violet-50 dark:hover:bg-slate-800";
           return (
-            <button key={key} type="button" disabled={sunday || future} title={sunday ? "Attendance cannot be marked on Sunday" : future ? "Future attendance cannot be marked" : isMarked ? "Attendance marked" : undefined} onClick={() => onChange(key)} className={"relative grid aspect-square place-items-center rounded-lg text-sm font-semibold transition " + stateClass}>
+            <button key={key} type="button" disabled={sunday || future || Boolean(holiday)} title={holiday ? `Holiday: ${holiday.title}` : sunday ? "Attendance cannot be marked on Sunday" : future ? "Future attendance cannot be marked" : isMarked ? "Attendance marked" : undefined} onClick={() => onChange(key)} className={"relative grid aspect-square place-items-center rounded-lg text-sm font-semibold transition " + stateClass}>
               {day}
               {isMarked && <span aria-label="Attendance marked" className={"absolute bottom-1 size-1.5 rounded-full " + (isSelected ? "bg-emerald-300" : "bg-emerald-500")} />}
             </button>
@@ -62,7 +63,7 @@ export default function AttendanceCalendar({ value, onChange, markedDates = [], 
         })}
       </div>
       <div className="mt-2 flex items-center gap-2 border-t border-slate-100 pt-2 text-xs font-semibold text-slate-500 dark:border-slate-700 dark:text-slate-300">
-        <span className="size-2 rounded-full bg-emerald-500" /> Attendance marked
+        <span className="size-2 rounded-full bg-emerald-500" /> Attendance marked <span className="ml-auto text-red-400">Strikethrough: unavailable</span>
       </div>
     </div>
   );
