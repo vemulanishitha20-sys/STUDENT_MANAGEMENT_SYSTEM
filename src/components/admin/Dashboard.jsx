@@ -12,7 +12,7 @@ import {
   UserPlus,
   Users,
 } from "lucide-react";
-import { supabase } from "../lib/data";
+import { supabase } from "../../lib/data";
 
 const Card = ({ children, className = "" }) => (
   <article className={`rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800 ${className}`}>

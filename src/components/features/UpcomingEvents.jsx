@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { CalendarDays, ChevronRight } from "lucide-react";
-import { supabase } from "../lib/data";
+import { supabase } from "../../lib/data";
 
 const STORE = "campus-academic-events";
 const colors = {

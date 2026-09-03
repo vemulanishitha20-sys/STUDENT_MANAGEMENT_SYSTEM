@@ -1,10 +1,11 @@
-import { Bell, CalendarCheck, CalendarDays, CalendarRange, GraduationCap, LayoutDashboard, LogOut, Users, X } from "lucide-react";
+import { Bell, BookOpen, CalendarCheck, CalendarDays, CalendarRange, GraduationCap, LayoutDashboard, LogOut, Users, X } from "lucide-react";
 import { NavLink } from "react-router-dom";
-import Brand from "./Brand";
+import Brand from "../shared/Brand";
 const links = [
   ["/", LayoutDashboard, "Dashboard"],
   ["/teachers", Users, "Teachers"],
   ["/students", GraduationCap, "Students"],
+  ["/subjects", BookOpen, "Subjects"],
   ["/attendance", CalendarCheck, "Attendance"],
   ["/announcements", Bell, "Announcements"],
   ["/schedule", CalendarDays, "Class Schedule"],

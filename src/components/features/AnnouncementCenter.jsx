@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Bell, ChevronRight, Plus, Send } from "lucide-react";
-import { supabase } from "../lib/data";
-import Toast from "./Toast";
+import { supabase } from "../../lib/data";
+import Toast from "../shared/Toast";
 
 const STORAGE_KEY = "campus-announcements";
 const localAnnouncements = () => { try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]"); } catch { return []; } };

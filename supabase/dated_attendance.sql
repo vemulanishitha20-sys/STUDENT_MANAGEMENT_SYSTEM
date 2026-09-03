@@ -9,6 +9,44 @@ create table if not exists public.attendance_records (
   marked_at timestamptz not null default now(),
   unique(subject_code, student_id, attendance_date)
 );
+
+-- Keep the roster totals used by the admin Students page in sync with the
+-- dated records that power the student portal. This also repairs totals when
+-- attendance is inserted, changed, or removed outside the teacher UI.
+create or replace function public.sync_student_attendance_totals()
+returns trigger language plpgsql security definer set search_path=public as $$
+declare v_student_id text := coalesce(new.student_id, old.student_id);
+begin
+  update public.students s
+  set total_classes = totals.total_classes,
+      attended_classes = totals.attended_classes
+  from (
+    select count(*)::integer as total_classes,
+           count(*) filter (where present)::integer as attended_classes
+    from public.attendance_records
+    where student_id = v_student_id
+  ) totals
+  where s.id = v_student_id;
+  if tg_op = 'DELETE' then return old; end if;
+  return new;
+end $$;
+
+drop trigger if exists attendance_records_sync_student_totals on public.attendance_records;
+create trigger attendance_records_sync_student_totals
+after insert or update or delete on public.attendance_records
+for each row execute function public.sync_student_attendance_totals();
+
+update public.students s
+set total_classes = totals.total_classes,
+    attended_classes = totals.attended_classes
+from (
+  select s2.id, count(ar.id)::integer as total_classes,
+         count(ar.id) filter (where ar.present)::integer as attended_classes
+  from public.students s2
+  left join public.attendance_records ar on ar.student_id = s2.id
+  group by s2.id
+) totals
+where s.id = totals.id;
 create index if not exists attendance_records_subject_date_idx
   on public.attendance_records(subject_code, attendance_date);
 alter table public.attendance_records enable row level security;
@@ -30,8 +68,7 @@ begin
   if not exists(select 1 from teacher_subjects ts join subjects sub on sub.code=ts.subject_code join students s on s.department=sub.department and s.year=sub.year join teachers t on t.id=ts.teacher_id where ts.teacher_id=p_teacher_id and ts.subject_code=p_subject_code and s.id=p_student_id and s.is_active and t.is_active) then raise exception 'Student is not in this assigned subject class'; end if;
   select true,ar.present into had_record,old_present from attendance_records ar where ar.subject_code=p_subject_code and ar.student_id=p_student_id and ar.attendance_date=p_date;
   insert into attendance_records(teacher_id,subject_code,student_id,attendance_date,present) values(p_teacher_id,p_subject_code,p_student_id,p_date,p_present) on conflict(subject_code,student_id,attendance_date) do update set teacher_id=excluded.teacher_id,present=excluded.present,marked_at=now();
-  if coalesce(had_record,false)=false then update students set total_classes=total_classes+1,attended_classes=attended_classes+(case when p_present then 1 else 0 end) where id=p_student_id;
-  elsif old_present is distinct from p_present then update students set attended_classes=greatest(0,attended_classes+(case when p_present then 1 else -1 end)) where id=p_student_id; end if;
+    -- The attendance_records trigger synchronizes the student totals.
   return query select s.attended_classes,s.total_classes,p_present from students s where s.id=p_student_id;
 end $$;
 
@@ -70,7 +107,6 @@ begin
     if not exists(select 1 from students s join subjects sub on sub.department=s.department and sub.year=s.year where sub.code=p_subject_code and s.id=sid and s.is_active)
       then raise exception 'Student % is not in this assigned subject class',sid; end if;
     insert into attendance_records(teacher_id,subject_code,student_id,attendance_date,present) values(p_teacher_id,p_subject_code,sid,p_date,is_present);
-    update students s set total_classes=s.total_classes+1,attended_classes=s.attended_classes+(case when is_present then 1 else 0 end) where s.id=sid;
   end loop;
   return query select s.id,s.attended_classes,s.total_classes from students s
     where s.id in(select value->>'student_id' from jsonb_array_elements(p_attendance));

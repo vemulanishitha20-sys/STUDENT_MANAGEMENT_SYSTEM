@@ -23,23 +23,23 @@
 .dark main[data-portal],
 .dark [class~="bg-slate-950"],
 .dark [class~="dark:bg-slate-950"] {
-  background-color: #1c1d27 !important;
+  background-color: #303747 !important;
 }
 
 .dark [class~="bg-slate-900"],
 .dark [class~="dark:bg-slate-900"],
 .dark [class~="dark:bg-slate-950/95"] {
-  background-color: #242631 !important;
+  background-color: #3a4355 !important;
 }
 
 .dark [class~="bg-slate-800"],
 .dark [class~="dark:bg-slate-800"] {
-  background-color: #2c2e3a !important;
+  background-color: #465166 !important;
 }
 
 .dark [class~="border-slate-700"],
 .dark [class~="dark:border-slate-700"] {
-  border-color: #454856 !important;
+  border-color: #667085 !important;
 }
 
 /* Keep the schedule editor consistent with the compact account-creation modal. */
@@ -112,6 +112,22 @@ table.min-w-\[900px\] td {
 }
 
 @media (max-height: 540px) and (orientation: landscape) {
+  [data-login] {
+    align-items: start;
+    overflow-y: auto;
+    padding: 0.75rem;
+  }
+
+  [data-login] > div {
+    margin-block: 0.75rem;
+    max-width: 30rem;
+    padding: 1.25rem;
+  }
+
+  [data-login] label.mt-7 {
+    margin-top: 1rem;
+  }
+
   main:has(.overflow-scroll) {
     padding-top: 0.5rem !important;
   }

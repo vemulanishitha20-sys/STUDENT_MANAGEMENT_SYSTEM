@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Plus, X } from "lucide-react";
-import { SUBJECTS } from "../lib/data";
+import { SUBJECTS } from "../../lib/data";
 export default function AccountModal({
   type,
   close,

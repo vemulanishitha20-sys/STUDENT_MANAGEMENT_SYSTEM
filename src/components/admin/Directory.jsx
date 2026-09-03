@@ -1,10 +1,10 @@
 import { useMemo, useState } from "react";
 import { Filter, Pencil, Plus, Search, Trash2, X } from "lucide-react";
 import AccountModal from "./AccountModal";
-import PersonDetails from "./PersonDetails";
+import PersonDetails from "../shared/PersonDetails";
 import StudentEditModal from "./StudentEditModal";
 import TeacherEditModal from "./TeacherEditModal";
-import ConfirmDialog from "./ConfirmDialog";
+import ConfirmDialog from "../shared/ConfirmDialog";
 const attendance = (student) =>
   student.total_classes
     ? Math.round((student.attended_classes / student.total_classes) * 100)
@@ -22,6 +22,7 @@ export default function Directory({
     [query, setQuery] = useState(""),
     [branch, setBranch] = useState("All"),
     [year, setYear] = useState("All"),
+    [lowAttendanceOnly, setLowAttendanceOnly] = useState(false),
     [selected, setSelected] = useState(null),
     [editing, setEditing] = useState(null),
     [editingTeacher, setEditingTeacher] = useState(null),
@@ -32,9 +33,7 @@ export default function Directory({
         ?.map((item) => item.subjects?.code)
         .filter(Boolean) || [],
   );
-  const filtered = useMemo(
-    () =>
-      rows.filter((r) => {
+  const matchesFilters = (r, includeAttendance = true) => {
         const assignments =
           r.teacher_subjects?.map((item) => item.subjects).filter(Boolean) ||
           [];
@@ -61,22 +60,38 @@ export default function Directory({
                   (branch === "All" || s.department === branch),
               )
             : Number(r.year) === Number(year));
+        const attendanceMatch =
+          !includeAttendance ||
+          type !== "students" ||
+          !lowAttendanceOnly ||
+          attendance(r) < 75;
         return (
-          searchText.includes(query.toLowerCase()) && branchMatch && yearMatch
+          searchText.includes(query.toLowerCase()) &&
+          branchMatch &&
+          yearMatch &&
+          attendanceMatch
         );
-      }),
-    [rows, query, branch, year],
+      };
+  const scopedRows = useMemo(
+    () => rows.filter((row) => matchesFilters(row, false)),
+    [rows, query, branch, year, type],
   );
-  const hasFilters = query || branch !== "All" || year !== "All";
+  const filtered = useMemo(
+    () => rows.filter((row) => matchesFilters(row)),
+    [rows, query, branch, year, lowAttendanceOnly, type],
+  );
+  const hasFilters =
+    query || branch !== "All" || year !== "All" || lowAttendanceOnly;
   const studentStats = {
-    total: filtered.length,
-    active: filtered.filter((row) => row.is_active !== false).length,
-    lowAttendance: filtered.filter((row) => attendance(row) < 75).length,
+    total: scopedRows.length,
+    active: scopedRows.filter((row) => row.is_active !== false).length,
+    lowAttendance: scopedRows.filter((row) => attendance(row) < 75).length,
   };
   const clearFilters = () => {
     setQuery("");
     setBranch("All");
     setYear("All");
+    setLowAttendanceOnly(false);
   };
   return (
     <div className="flex min-h-0 flex-1 flex-col">
@@ -98,14 +113,23 @@ export default function Directory({
               {studentStats.active}
             </strong>
           </div>
-          <div className="rounded-2xl border border-red-200 bg-red-50 px-5 py-3 text-red-950 dark:border-red-500 dark:bg-red-950 dark:text-red-50">
+          <button
+            type="button"
+            onClick={() => setLowAttendanceOnly((value) => !value)}
+            aria-pressed={lowAttendanceOnly}
+            title="Show only students below 75% attendance"
+            className={`rounded-2xl border px-5 py-3 text-left text-red-950 transition focus:outline-none focus:ring-2 focus:ring-red-400 dark:text-red-50 ${lowAttendanceOnly ? "border-red-500 bg-red-100 ring-2 ring-red-400 dark:bg-red-900" : "border-red-200 bg-red-50 hover:border-red-400 hover:bg-red-100 dark:border-red-500 dark:bg-red-950"}`}
+          >
             <p className="text-xs font-bold uppercase tracking-wider">
               Below 75% attendance
             </p>
             <strong className="mt-1 block text-2xl">
               {studentStats.lowAttendance}
             </strong>
-          </div>
+            <span className="mt-1 block text-xs font-semibold">
+              {lowAttendanceOnly ? "Showing below 75%" : "Click to filter"}
+            </span>
+          </button>
         </div>
       )}
       <div className="sticky top-0 z-20 -mx-1 grid gap-3 bg-[#fbfaf7] px-1 pb-4 pt-1 md:grid-cols-[minmax(220px,1fr)_auto_auto_auto]">

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { CalendarDays, ChevronLeft, ChevronRight, Pencil, Plus, Trash2, X } from "lucide-react";
-import { supabase } from "../lib/data";
-import Toast from "./Toast";
+import { supabase } from "../../lib/data";
+import Toast from "../shared/Toast";
 
 const STORE = "campus-academic-events";
 const TYPES = ["Holiday", "Exam", "Academic Event", "Important Date"];

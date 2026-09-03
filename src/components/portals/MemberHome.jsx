@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import { Check, LogOut, X } from "lucide-react";
-import Brand from "./Brand";
-import { supabase } from "../lib/data";
-import Toast from "./Toast";
+import Brand from "../shared/Brand";
+import { supabase } from "../../lib/data";
+import Toast from "../shared/Toast";
 const percent = (s) =>
   s.total_classes
     ? Math.round((s.attended_classes / s.total_classes) * 100)

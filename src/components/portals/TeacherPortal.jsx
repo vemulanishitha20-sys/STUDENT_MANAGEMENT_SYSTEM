@@ -17,19 +17,19 @@ import {
   Users,
   X,
 } from "lucide-react";
-import Brand from "./Brand";
-import PersonDetails from "./PersonDetails";
-import AttendanceCalendar from "./AttendanceCalendar";
-import ConfirmDialog from "./ConfirmDialog";
-import AnnouncementCenter, { loadAnnouncements } from "./AnnouncementCenter";
-import { supabase } from "../lib/data";
-import Schedule from "./Schedule";
-import AcademicCalendar from "./AcademicCalendar";
-import UpcomingEvents from "./UpcomingEvents";
-import PageIntro from "./PageIntro";
-import ProfileMenu from "./ProfileMenu";
-import Toast from "./Toast";
-import useAcademicHolidays from "../hooks/useAcademicHolidays";
+import Brand from "../shared/Brand";
+import PersonDetails from "../shared/PersonDetails";
+import AttendanceCalendar from "../features/AttendanceCalendar";
+import ConfirmDialog from "../shared/ConfirmDialog";
+import AnnouncementCenter, { loadAnnouncements } from "../features/AnnouncementCenter";
+import { supabase } from "../../lib/data";
+import Schedule from "../features/Schedule";
+import AcademicCalendar from "../features/AcademicCalendar";
+import UpcomingEvents from "../features/UpcomingEvents";
+import PageIntro from "../shared/PageIntro";
+import ProfileMenu from "../shared/ProfileMenu";
+import Toast from "../shared/Toast";
+import useAcademicHolidays from "../../hooks/useAcademicHolidays";
 
 const percentage = (student) =>
   student.total_classes
@@ -69,13 +69,15 @@ export default function TeacherPortal({ session, logout }) {
     ),
     [message, setMessage] = useState(""),
     [unreadAnnouncements, setUnreadAnnouncements] = useState(false),
-    [loading, setLoading] = useState(true);
+    [loading, setLoading] = useState(true),
+    [scheduledClasses, setScheduledClasses] = useState([]),
+    [isTeacherActive, setIsTeacherActive] = useState(true);
   const holidays = useAcademicHolidays();
 
   useEffect(() => {
     const load = async () => {
       setLoading(true);
-      const [studentResult, subjectResult] = await Promise.all([
+      const [studentResult, subjectResult, scheduleResult, teacherResult] = await Promise.all([
         supabase.rpc("teacher_attendance_students", {
           p_teacher_id: session.id,
         }),
@@ -83,12 +85,16 @@ export default function TeacherPortal({ session, logout }) {
           .from("teacher_subjects")
           .select("subjects(code,name,department,year)")
           .eq("teacher_id", session.id),
+        supabase.from("class_schedule").select("subject_code,day,slot,department,year").eq("teacher_id", session.id),
+        supabase.from("teachers").select("is_active").eq("id", session.id).single(),
       ]);
       setStudents(studentResult.data || []);
       setAssignments(
         subjectResult.data?.map((item) => item.subjects).filter(Boolean) || [],
       );
-      if (studentResult.error) setMessage(studentResult.error.message);
+      setScheduledClasses(scheduleResult.data || []);
+      if (teacherResult.data) setIsTeacherActive(teacherResult.data.is_active !== false);
+      if (studentResult.error || subjectResult.error || scheduleResult.error || teacherResult.error) setMessage(studentResult.error?.message || subjectResult.error?.message || scheduleResult.error?.message || teacherResult.error?.message);
       setLoading(false);
     };
     if (supabase) {
@@ -172,6 +178,10 @@ export default function TeacherPortal({ session, logout }) {
     attendanceDate && new Date(`${attendanceDate}T00:00:00`).getDay() === 0;
   const isFuture = attendanceDate > new Date().toLocaleDateString("en-CA");
   const isHoliday = holidays.isHoliday(attendanceDate);
+  const selectedWeekday = attendanceDate ? new Date(`${attendanceDate}T00:00:00`).toLocaleDateString("en-US", { weekday: "long" }) : "";
+  const scheduledAssignments = assignments.filter((subject) => scheduledClasses.some((item) => item.subject_code === subject.code && item.day === selectedWeekday));
+  const selectedSchedule = selectedSubject && scheduledClasses.find((item) => item.subject_code === selectedSubject.code && item.day === selectedWeekday);
+  const isScheduled = Boolean(selectedSchedule);
   const attendanceLocked = markedDates.includes(attendanceDate);
   const allStudentsMarked =
     subjectStudents.length > 0 &&
@@ -185,6 +195,8 @@ export default function TeacherPortal({ session, logout }) {
   );
 
   const mark = (student, present) => {
+    if (!isTeacherActive) return setMessage("Your account is inactive. Attendance actions are unavailable.");
+    if (!isScheduled) return setMessage(`You do not have this class scheduled on ${selectedWeekday}.`);
     if (isHoliday) return setMessage(`${holidays.holidayName(attendanceDate)} is an official holiday.`);
     if (isSunday) return setMessage("Attendance cannot be marked on Sunday.");
     if (isFuture) return setMessage("Future attendance cannot be marked.");
@@ -193,6 +205,8 @@ export default function TeacherPortal({ session, logout }) {
     setAttendanceDraft((current) => ({ ...current, [student.id]: present }));
   };
   const markAllPresent = () => {
+    if (!isTeacherActive) return setMessage("Your account is inactive. Attendance actions are unavailable.");
+    if (!isScheduled) return setMessage(`You do not have this class scheduled on ${selectedWeekday}.`);
     if (isHoliday) return setMessage(`${holidays.holidayName(attendanceDate)} is an official holiday.`);
     if (isSunday) return setMessage("Attendance cannot be marked on Sunday.");
     if (isFuture) return setMessage("Future attendance cannot be marked.");
@@ -202,6 +216,8 @@ export default function TeacherPortal({ session, logout }) {
 
   const saveAttendance = async () => {
     setConfirmingSave(false);
+    if (!isTeacherActive) return setMessage("Your account is inactive. Attendance actions are unavailable.");
+    if (!isScheduled) return setMessage(`You do not have this class scheduled on ${selectedWeekday}.`);
     if (isHoliday) return setMessage(`${holidays.holidayName(attendanceDate)} is an official holiday.`);
     if (isSunday) return setMessage("Attendance cannot be marked on Sunday.");
     if (isFuture) return setMessage("Future attendance cannot be marked.");
@@ -241,6 +257,11 @@ export default function TeacherPortal({ session, logout }) {
   };
 
   const navigate = (nextPage) => {
+    if (!isTeacherActive && nextPage === "attendance") {
+      setMessage("Your account is inactive. Attendance actions are unavailable.");
+      setSidebarOpen(false);
+      return;
+    }
     setPage(nextPage);
     if (nextPage !== "attendance") setSelectedSubject(null);
     if (nextPage !== "students") setSelectedStudentSubject(null);
@@ -373,15 +394,21 @@ export default function TeacherPortal({ session, logout }) {
 
         <Toast message={message} onClose={() => setMessage("")} />
 
+        {!isTeacherActive && (
+          <div className="mt-4 rounded-2xl border border-amber-300 bg-amber-50 px-4 py-3 text-center text-sm font-bold text-amber-900 dark:border-amber-400/70 dark:bg-amber-100 dark:text-amber-950">
+            Your teacher account is inactive. You can view your account, but subjects, periods and attendance are read-only until an administrator reactivates it.
+          </div>
+        )}
+
         {page === "announcements" && (
           <section className="mt-6">
             <AnnouncementCenter role="teacher" userId={session.id} onUnreadChange={setUnreadAnnouncements} />
           </section>
         )}
-        {page === "schedule" && <section className="mt-6"><Schedule role="teacher" session={{ ...session, teacher_subjects: assignments.map((subjects) => ({ subjects })) }} /></section>}
+        {page === "schedule" && <section className={`mt-6 ${!isTeacherActive ? "pointer-events-none select-none opacity-50 blur-[2px]" : ""}`}><Schedule role="teacher" session={{ ...session, teacher_subjects: assignments.map((subjects) => ({ subjects })) }} /></section>}
         {page === "calendar" && <AcademicCalendar role="teacher" session={{ ...session, teacher_subjects: assignments.map((subjects) => ({ subjects })) }} />}
         {page === "dashboard" && (
-          <section className="mt-6">
+          <section className={`mt-6 ${!isTeacherActive ? "pointer-events-none select-none opacity-50 blur-[2px]" : ""}`}>
             <div className="hidden">
               {[
                 [
@@ -471,14 +498,15 @@ export default function TeacherPortal({ session, logout }) {
         )}
 
         {page === "attendance" && (
-          <section className="mt-6">
+          <section className={`mt-6 ${!isTeacherActive ? "pointer-events-none select-none opacity-50 blur-[2px]" : ""}`}>
             {!selectedSubject ? (
               <>
-                <div className="mb-5">
-                  <h2 className="text-2xl">Choose an assigned subject</h2>
+                <div className="mb-5 flex flex-wrap items-end justify-between gap-3 rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-800">
+                  <div><h2 className="text-2xl">Choose today&apos;s class</h2><p className="text-sm text-slate-500 dark:text-slate-300">Only classes from your timetable for {selectedWeekday} are shown.</p></div>
+                  <label className="text-sm font-semibold">Attendance date<input type="date" value={attendanceDate} max={new Date().toLocaleDateString("en-CA")} onChange={(event) => setAttendanceDate(event.target.value)} className="mt-1 block h-11 rounded-xl border border-slate-200 bg-white px-3 dark:border-slate-600 dark:bg-slate-900" /></label>
                 </div>
                 <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-                  {assignments.map((subject) => {
+                  {scheduledAssignments.map((subject) => {
                     const count = students.filter(
                       (student) =>
                         student.department === subject.department &&
@@ -511,6 +539,7 @@ export default function TeacherPortal({ session, logout }) {
                       </button>
                     );
                   })}
+                  {!scheduledAssignments.length && <p className="rounded-2xl border border-dashed border-slate-300 p-8 text-center text-slate-500 sm:col-span-2 xl:col-span-3">You have no scheduled class on {selectedWeekday}.</p>}
                 </div>
               </>
             ) : (
@@ -722,7 +751,7 @@ export default function TeacherPortal({ session, logout }) {
         )}
 
         {page === "students" && (
-          <section className="mt-6">
+          <section className={`mt-6 ${!isTeacherActive ? "pointer-events-none select-none opacity-50 blur-[2px]" : ""}`}>
             {!selectedStudentSubject ? (
               <>
                 <h2 className="text-2xl">Choose an assigned subject</h2>

@@ -1,4 +1,4 @@
-import jbietLogo from "../assets/jbiet-logo.png";
+import jbietLogo from "../../assets/jbiet-logo.png";
 
 export default function Brand() {
   return (

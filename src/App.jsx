@@ -1,14 +1,14 @@
 import { useEffect, useState } from "react";
 import { Menu, Moon, Sun } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
-import Login from "./components/Login";
-import Sidebar from "./components/Sidebar";
-import StudentPortal from "./components/StudentPortal";
-import TeacherPortal from "./components/TeacherPortal";
-import ConfirmDialog from "./components/ConfirmDialog";
-import PageIntro from "./components/PageIntro";
-import ProfileMenu from "./components/ProfileMenu";
-import Toast from "./components/Toast";
+import Login from "./components/auth/Login";
+import Sidebar from "./components/admin/Sidebar";
+import StudentPortal from "./components/portals/StudentPortal";
+import TeacherPortal from "./components/portals/TeacherPortal";
+import ConfirmDialog from "./components/shared/ConfirmDialog";
+import PageIntro from "./components/shared/PageIntro";
+import ProfileMenu from "./components/shared/ProfileMenu";
+import Toast from "./components/shared/Toast";
 import AppRoutes from "./routes/AppRoutes";
 import {
   ADMIN_CREDENTIALS,
@@ -47,8 +47,7 @@ export default function App() {
         if (!t.error && !s.error) {
           setData({ teachers: t.data, students: s.data });
         } else {
-          setData(getLocal());
-          flash("Database is unavailable. Showing the saved student roster.");
+          flash("Database is unavailable. Student records could not be loaded.");
         }
       } else setData(getLocal());
     };
@@ -121,8 +120,11 @@ export default function App() {
           flash("Account created successfully");
           return true;
         }
-      } catch {
-        // The local roster below keeps the admin workflow usable offline.
+        flash(error?.message || "The account could not be saved to the database.");
+        return false;
+      } catch (error) {
+        flash(error.message || "The account could not be saved to the database.");
+        return false;
       }
     }
 
@@ -263,6 +265,8 @@ export default function App() {
     ? "Teachers"
     : location.pathname.includes("student")
       ? "Students"
+      : location.pathname.includes("subjects")
+        ? "Subjects"
       : location.pathname.includes("attendance")
         ? "Attendance"
       : location.pathname.includes("calendar")
@@ -318,6 +322,7 @@ export default function App() {
             subtitle={
               location.pathname.includes("teacher") ? "Manage faculty accounts and assigned subjects."
                 : location.pathname.includes("student") ? "Manage student records and account access."
+                  : location.pathname.includes("subjects") ? "Browse subjects by branch and year with assigned faculty."
                   : location.pathname.includes("attendance") ? "Review classes and record daily attendance."
                     : location.pathname.includes("announcement") ? "Publish and manage campus announcements."
                       : location.pathname.includes("calendar") ? "Manage holidays, exams and important academic dates."

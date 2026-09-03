@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { CalendarDays, Pencil, Plus, Trash2, X } from "lucide-react";
-import { SUBJECTS, supabase } from "../lib/data";
-import Toast from "./Toast";
+import { SUBJECTS, supabase } from "../../lib/data";
+import Toast from "../shared/Toast";
 
 const DAYS=["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"], SLOTS=["09:30 - 10:30","10:30 - 11:30","12:00 - 01:00"], BREAK="11:30 - 12:00 (Break)", TIMES=[SLOTS[0],SLOTS[1],BREAK,SLOTS[2]], CK="campus-class-schedule", SK="campus-sports-day-allocations", input="h-11 rounded-xl border border-stone-300 bg-white px-3 dark:border-slate-600 dark:bg-slate-900";
 const local=k=>{try{return JSON.parse(localStorage.getItem(k)||"[]")}catch{return[]}}, save=(k,v)=>localStorage.setItem(k,JSON.stringify(v)), merge=(a,b)=>[...a,...b.filter(x=>!a.some(y=>y.id===x.id))], oneSportsDayPerClass=(remote,cached)=>{const days=new Map();[...cached,...remote].forEach(x=>days.set(`${x.department}-${x.year}`,x));return [...days.values()]}, teaches=(t,c)=>t.teacher_subjects?.some(x=>x.subjects?.code===c)||t.subjectCodes?.includes(c);

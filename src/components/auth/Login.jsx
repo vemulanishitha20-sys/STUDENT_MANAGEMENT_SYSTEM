@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Eye, EyeOff } from "lucide-react";
-import Toast from "./Toast";
+import Toast from "../shared/Toast";
 export default function Login({ onLogin, toast }) {
   const [id, setId] = useState(""),
     [password, setPassword] = useState(""),
@@ -24,15 +24,15 @@ export default function Login({ onLogin, toast }) {
       setError("That ID or password does not match.");
   };
   const field =
-    "mt-2 h-14 w-full rounded-xl border border-stone-300 bg-white px-4 text-base outline-none focus:border-campus focus:ring-2 focus:ring-violet-100";
+    "mt-2 h-14 w-full rounded-xl border border-stone-300 bg-white px-4 text-base text-slate-800 outline-none placeholder:text-slate-400 focus:border-campus focus:ring-2 focus:ring-violet-100 dark:border-slate-500 dark:bg-slate-700 dark:text-slate-50 dark:placeholder:text-slate-300 dark:focus:ring-violet-400/40";
   return (
-    <div className="grid min-h-[100dvh] place-items-center bg-gradient-to-br from-orange-50 to-violet-100 p-4 dark:from-slate-950 dark:to-slate-900 sm:p-5">
-      <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl shadow-violet-200/60 sm:p-10">
-        <h1 className="text-center text-3xl text-[#292640] sm:text-4xl">Welcome back!</h1>
-        <p className="mt-2 text-center text-base text-slate-500">
+    <div data-login className="grid min-h-[100dvh] place-items-center bg-gradient-to-br from-orange-50 to-violet-100 p-4 dark:from-slate-700 dark:to-violet-900/70 sm:p-5">
+      <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl shadow-violet-200/60 dark:bg-slate-800 dark:shadow-slate-950/30 sm:p-10">
+        <h1 className="text-center text-3xl text-[#292640] dark:text-slate-50 sm:text-4xl">Welcome back!</h1>
+        <p className="mt-2 text-center text-base text-slate-500 dark:text-slate-200">
           Enter your details to sign in.
         </p>
-        <label className="mt-7 block text-base font-bold">
+        <label className="mt-7 block text-base font-bold dark:text-slate-100">
           Enter your ID
           <input
             className={field}
@@ -45,7 +45,7 @@ export default function Login({ onLogin, toast }) {
             }}
           />
         </label>
-        <label className="mt-5 block text-base font-bold">
+        <label className="mt-5 block text-base font-bold dark:text-slate-100">
           Password
           <div className="relative">
             <input
@@ -62,7 +62,7 @@ export default function Login({ onLogin, toast }) {
             />
             <button
               type="button"
-              className="absolute right-2 top-[calc(50%+4px)] grid size-10 -translate-y-1/2 place-items-center text-slate-500"
+              className="absolute right-2 top-[calc(50%+4px)] grid size-10 -translate-y-1/2 place-items-center text-slate-500 dark:text-slate-200"
               onClick={() => setShow(!show)}
             >
               {show ? <EyeOff size={20} /> : <Eye size={20} />}

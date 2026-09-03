@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { BookOpen, UserRound } from "lucide-react";
-import { supabase } from "../lib/data";
-import Toast from "./Toast";
+import { supabase } from "../../lib/data";
+import Toast from "../shared/Toast";
 
 export default function StudentSubjects({ student }) {
   const [items, setItems] = useState([]), [loading, setLoading] = useState(true), [message, setMessage] = useState("");

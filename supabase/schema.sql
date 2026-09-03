@@ -33,18 +33,18 @@ returns setof teachers language plpgsql security definer set search_path=public 
 end $$;
 create or replace function create_student(p_name text,p_email text,p_department text,p_year integer)
 returns setof students language plpgsql security definer set search_path=public as $$
-declare prefix text; next_number integer; new_id text;
+declare v_prefix text; v_next_number integer; v_new_id text;
 begin
   if p_department not in ('CSE','ECE') then raise exception 'Unsupported department'; end if;
   if p_year not between 1 and 4 then raise exception 'Year must be between 1 and 4'; end if;
-  prefix := case p_year when 1 then '26611' when 2 then '25612' when 3 then '24613' when 4 then '23614' end
+  v_prefix := case p_year when 1 then '26611' when 2 then '25612' when 3 then '24613' when 4 then '23614' end
     || case p_department when 'CSE' then 'A' else 'B' end;
-  insert into student_id_counters(prefix,last_value) values(prefix,1)
+  insert into student_id_counters(prefix,last_value) values(v_prefix,1)
   on conflict(prefix) do update set last_value=student_id_counters.last_value+1
-  returning last_value into next_number;
-  new_id := prefix || case when next_number < 100 then lpad(next_number::text,2,'0') else next_number::text end;
+  returning last_value into v_next_number;
+  v_new_id := v_prefix || case when v_next_number < 100 then lpad(v_next_number::text,2,'0') else v_next_number::text end;
   return query insert into students(id,name,email,department,year)
-    values(new_id,trim(p_name),nullif(trim(coalesce(p_email,'')),''),p_department,p_year) returning *;
+    values(v_new_id,trim(p_name),nullif(trim(coalesce(p_email,'')),''),p_department,p_year) returning *;
 end $$;
 -- The return columns changed in a later version, so PostgreSQL requires the
 -- old function to be removed before it can be recreated.
@@ -492,6 +492,7 @@ begin
   if exists(select 1 from public.academic_events ae join public.subjects sub on sub.code=p_subject_code where ae.creator_role='admin' and ae.kind='Holiday' and p_date between ae.start_date and ae.end_date and (ae.department is null or ae.department=sub.department) and (ae.year is null or ae.year=sub.year)) then raise exception 'Attendance cannot be marked on an official holiday'; end if;
   if exists(select 1 from public.attendance_records where teacher_id=p_teacher_id and subject_code=p_subject_code and attendance_date=p_date) then raise exception 'Attendance for this date has already been saved and cannot be changed'; end if;
   if not exists(select 1 from public.teacher_subjects ts join public.teachers t on t.id=ts.teacher_id where ts.teacher_id=p_teacher_id and ts.subject_code=p_subject_code and t.is_active) then raise exception 'This subject is not assigned to this active teacher'; end if;
+  if not exists(select 1 from public.class_schedule cs where cs.teacher_id=p_teacher_id and cs.subject_code=p_subject_code and cs.day=trim(to_char(p_date,'Day'))) then raise exception 'This teacher has no scheduled class for this subject on the selected day'; end if;
   select count(*) into v_expected from public.students s join public.subjects sub on sub.department=s.department and sub.year=s.year where sub.code=p_subject_code and s.is_active;
   select count(distinct item->>'student_id') into v_supplied from jsonb_array_elements(p_attendance) item where item?'student_id' and item?'present' and jsonb_typeof(item->'present')='boolean';
   if v_expected=0 or v_supplied<>v_expected then raise exception 'Mark every student present or absent before saving'; end if;
@@ -499,7 +500,7 @@ begin
     v_student_id:=v_item->>'student_id'; v_present:=(v_item->>'present')::boolean;
     if not exists(select 1 from public.students s join public.subjects sub on sub.department=s.department and sub.year=s.year where sub.code=p_subject_code and s.id=v_student_id and s.is_active) then raise exception 'Student % is not in this assigned subject class',v_student_id; end if;
     insert into public.attendance_records(teacher_id,subject_code,student_id,attendance_date,present) values(p_teacher_id,p_subject_code,v_student_id,p_date,v_present);
-    update public.students s set total_classes=s.total_classes+1,attended_classes=s.attended_classes+(case when v_present then 1 else 0 end) where s.id=v_student_id;
+    -- attendance_records_sync_student_totals keeps the roster totals in sync.
   end loop;
   return query select s.id,s.attended_classes,s.total_classes from public.students s where s.id in(select item->>'student_id' from jsonb_array_elements(p_attendance) item);
 end $$;

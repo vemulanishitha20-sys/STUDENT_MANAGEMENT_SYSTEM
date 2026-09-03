@@ -12,16 +12,16 @@ import {
   Sun,
   X,
 } from "lucide-react";
-import Brand from "./Brand";
-import { supabase } from "../lib/data";
-import AnnouncementCenter, { loadAnnouncements } from "./AnnouncementCenter";
-import Schedule from "./Schedule";
-import AcademicCalendar from "./AcademicCalendar";
-import UpcomingEvents from "./UpcomingEvents";
-import PageIntro from "./PageIntro";
-import ProfileMenu from "./ProfileMenu";
+import Brand from "../shared/Brand";
+import { supabase } from "../../lib/data";
+import AnnouncementCenter, { loadAnnouncements } from "../features/AnnouncementCenter";
+import Schedule from "../features/Schedule";
+import AcademicCalendar from "../features/AcademicCalendar";
+import UpcomingEvents from "../features/UpcomingEvents";
+import PageIntro from "../shared/PageIntro";
+import ProfileMenu from "../shared/ProfileMenu";
 import StudentSubjects from "./StudentSubjects";
-import Toast from "./Toast";
+import Toast from "../shared/Toast";
 
 const percentage = (attended, total) =>
   total ? Math.round((Number(attended) / Number(total)) * 100) : 0;
@@ -100,7 +100,11 @@ export default function StudentPortal({ session, logout }) {
         }),
       ]);
       if (studentResult.data) setStudent(studentResult.data);
-      setSubjects(subjectResult.data || []);
+      // Inactive students may sign in, but their attendance must remain hidden
+      // and read as 0. Reactivate the account to reveal its saved records.
+      setSubjects(
+        studentResult.data?.is_active === false ? [] : subjectResult.data || [],
+      );
       if (studentResult.error || subjectResult.error)
         setMessage(
           studentResult.error?.message || subjectResult.error?.message,

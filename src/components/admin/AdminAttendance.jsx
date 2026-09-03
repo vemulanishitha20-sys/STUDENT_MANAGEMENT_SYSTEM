@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, BookOpen, CalendarDays, Check, Search, X } from "lucide-react";
-import ConfirmDialog from "./ConfirmDialog";
-import AttendanceCalendar from "./AttendanceCalendar";
-import { supabase } from "../lib/data";
-import useAcademicHolidays from "../hooks/useAcademicHolidays";
-import Toast from "./Toast";
+import ConfirmDialog from "../shared/ConfirmDialog";
+import AttendanceCalendar from "../features/AttendanceCalendar";
+import { supabase } from "../../lib/data";
+import useAcademicHolidays from "../../hooks/useAcademicHolidays";
+import Toast from "../shared/Toast";
 
 export default function AdminAttendance({ teachers, students }) {
   const [teacher, setTeacher] = useState(null);
@@ -21,16 +21,28 @@ export default function AdminAttendance({ teachers, students }) {
   const [message, setMessage] = useState("");
   const [departmentFilter, setDepartmentFilter] = useState("");
   const [yearFilter, setYearFilter] = useState("");
+  const [scheduledClasses, setScheduledClasses] = useState([]);
   const holidays = useAcademicHolidays();
+
+  useEffect(() => {
+    if (!supabase) return;
+    supabase.from("class_schedule").select("teacher_id,subject_code,day,slot,department,year").then(({ data, error }) => {
+      setScheduledClasses(data || []);
+      if (error) setMessage(error.message);
+    });
+  }, []);
+
+  const selectedWeekday = date ? new Date(`${date}T00:00:00`).toLocaleDateString("en-US", { weekday: "long" }) : "";
 
   const departments = useMemo(() => [...new Set(students.map((item) => item.department).filter(Boolean))].sort(), [students]);
   const years = useMemo(() => [...new Set(students.map((item) => Number(item.year)).filter(Boolean))].sort((a, b) => a - b), [students]);
   const classOptions = useMemo(() => teachers
     .filter((item) => item.is_active !== false)
     .flatMap((item) => (item.teacher_subjects || []).map(({ subjects }) => ({ teacher: item, subject: subjects })).filter(({ subject }) => subject))
+    .filter(({ teacher: itemTeacher, subject: itemSubject }) => scheduledClasses.some((scheduled) => scheduled.teacher_id === itemTeacher.id && scheduled.subject_code === itemSubject.code && scheduled.day === selectedWeekday))
     .filter(({ subject }) => !departmentFilter || subject.department === departmentFilter)
     .filter(({ subject }) => !yearFilter || Number(subject.year) === Number(yearFilter)),
-  [teachers, departmentFilter, yearFilter]);
+  [teachers, scheduledClasses, selectedWeekday, departmentFilter, yearFilter]);
   const classStudents = useMemo(
     () => students
       .filter((student) => subject && student.is_active !== false && student.department === subject.department && Number(student.year) === Number(subject.year))
@@ -65,6 +77,8 @@ export default function AdminAttendance({ teachers, students }) {
   const isSunday = new Date(`${date}T00:00:00`).getDay() === 0;
   const isFuture = date > new Date().toLocaleDateString("en-CA");
   const isHoliday = holidays.isHoliday(date);
+  const selectedSchedule = subject && teacher && scheduledClasses.find((item) => item.teacher_id === teacher.id && item.subject_code === subject.code && item.day === selectedWeekday);
+  const isScheduled = Boolean(selectedSchedule);
   const allMarked = classStudents.length > 0 && classStudents.every((student) => draft[student.id] !== undefined);
   const changed = classStudents.some((student) => draft[student.id] !== undefined && draft[student.id] !== saved[student.id]);
 
@@ -74,16 +88,18 @@ export default function AdminAttendance({ teachers, students }) {
     setQuery("");
   };
   const mark = (id, present) => {
+    if (!isScheduled) return setMessage(`This class is not scheduled on ${selectedWeekday}.`);
     if (isSunday || isFuture || isHoliday || locked) return;
     setDraft((current) => ({ ...current, [id]: present }));
   };
   const markAllPresent = () => {
+    if (!isScheduled) return setMessage(`This class is not scheduled on ${selectedWeekday}.`);
     if (isSunday || isFuture || isHoliday || locked) return;
     setDraft((current) => ({ ...current, ...Object.fromEntries(classStudents.map((student) => [student.id, true])) }));
   };
   const save = async () => {
     setConfirming(false);
-    if (!supabase || !allMarked || isSunday || isFuture || isHoliday || locked) return;
+    if (!supabase || !allMarked || !isScheduled || isSunday || isFuture || isHoliday || locked) return;
     setSaving(true);
     const { error } = await supabase.rpc("save_subject_attendance", {
       p_teacher_id: teacher.id,
@@ -104,7 +120,8 @@ export default function AdminAttendance({ teachers, students }) {
       {!subject ? (
         <>
           <div className="mb-5 flex flex-wrap items-end gap-3 rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-800">
-            <div className="mr-auto"><h2 className="text-2xl">Choose a class</h2><p className="mt-1 text-sm text-slate-500 dark:text-slate-300">Filter by branch and year, then select the teacher and class.</p></div>
+            <div className="mr-auto"><h2 className="text-2xl">Choose a scheduled class</h2><p className="mt-1 text-sm text-slate-500 dark:text-slate-300">Only timetable classes for {selectedWeekday} are shown.</p></div>
+            <label className="text-sm font-semibold">Date<input type="date" value={date} max={new Date().toLocaleDateString("en-CA")} onChange={(event) => setDate(event.target.value)} className="mt-1 block h-11 rounded-xl border border-slate-200 bg-white px-3 dark:border-slate-600 dark:bg-slate-900" /></label>
             <label className="text-sm font-semibold">Branch<select value={departmentFilter} onChange={(event) => setDepartmentFilter(event.target.value)} className="mt-1 block h-11 min-w-36 rounded-xl border border-slate-200 bg-white px-3 dark:border-slate-600 dark:bg-slate-900"><option value="">All branches</option>{departments.map((item) => <option key={item}>{item}</option>)}</select></label>
             <label className="text-sm font-semibold">Year<select value={yearFilter} onChange={(event) => setYearFilter(event.target.value)} className="mt-1 block h-11 min-w-32 rounded-xl border border-slate-200 bg-white px-3 dark:border-slate-600 dark:bg-slate-900"><option value="">All years</option>{years.map((item) => <option key={item} value={item}>Year {item}</option>)}</select></label>
           </div>
@@ -168,7 +185,7 @@ export default function AdminAttendance({ teachers, students }) {
               </div>
             </div>
           </div>
-          {(isSunday || isFuture || isHoliday) && <p className="mt-4 rounded-xl border border-red-300 bg-red-50 p-3 text-center font-bold text-red-700">{isHoliday ? `${holidays.holidayName(date)} is an official holiday. Attendance cannot be marked.` : "Attendance cannot be marked for this date."}</p>}
+          {(!isScheduled || isSunday || isFuture || isHoliday) && <p className="mt-4 rounded-xl border border-red-300 bg-red-50 p-3 text-center font-bold text-red-700">{!isScheduled ? `This class is not scheduled on ${selectedWeekday}.` : isHoliday ? `${holidays.holidayName(date)} is an official holiday. Attendance cannot be marked.` : "Attendance cannot be marked for this date."}</p>}
           <div className="mt-4 flex flex-wrap items-center justify-between gap-3"><p className="text-sm text-slate-500 dark:text-slate-300">Mark everyone present, then change individual students to absent if required.</p><button type="button" onClick={markAllPresent} disabled={!classStudents.length || isSunday || isFuture || isHoliday || locked} className="inline-flex h-10 items-center gap-2 rounded-xl bg-emerald-600 px-4 font-bold text-white shadow-sm transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"><Check size={17} /> Mark all present</button></div>
           <div className="mt-3 overflow-hidden rounded-2xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800">
             <div className="hidden grid-cols-[150px_1fr_120px_120px] gap-3 bg-slate-50 px-5 py-3 text-xs font-bold uppercase text-slate-500 dark:bg-slate-900 md:grid"><span>Campus ID</span><span>Name</span><span className="text-center">Present</span><span className="text-center">Absent</span></div>
