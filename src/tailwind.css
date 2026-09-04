@@ -161,6 +161,10 @@ form.max-w-2xl > p.mt-4.rounded-xl {
   background-color: rgb(248 250 252);
 }
 
+.overflow-scroll > table.min-w-\[900px\] {
+  width: max-content;
+}
+
 /* Keep schedule content inside its own day column. Long subject and faculty
    names wrap within the card instead of covering the following weekday. */
 .overflow-scroll > table.min-w-\[900px\] > thead th:not(:first-child),
@@ -186,6 +190,22 @@ form.max-w-2xl > p.mt-4.rounded-xl {
   max-width: 100%;
   white-space: normal;
   overflow-wrap: anywhere;
+}
+
+@media (max-width: 767px) {
+  /* A sticky time column covers the first subjects after a horizontal swipe.
+     Let it scroll with the timetable on phones so every cell remains visible. */
+  .overflow-scroll > table.min-w-\[900px\] th.sticky.left-0 {
+    position: static;
+  }
+
+  .overflow-scroll > table.min-w-\[900px\] > thead th:first-child,
+  .overflow-scroll > table.min-w-\[900px\] > tbody th:first-child {
+    box-sizing: border-box;
+    width: 9rem;
+    min-width: 9rem;
+    max-width: 9rem;
+  }
 }
 
 /* Students read one branch/year timetable; show it as one continuous page
