@@ -82,7 +82,7 @@ export default function Dashboard({ data }) {
     const refreshTimer = window.setInterval(load, 30000);
     window.addEventListener("focus", load);
     return () => { window.clearInterval(refreshTimer); window.removeEventListener("focus", load); };
-  }, [data.students.length, data.teachers.length, branch, year]);
+  }, [data.students, data.teachers.length, branch, year]);
 
   const branches = useMemo(() => [...new Set((overview.roster || []).map((student) => student.department).filter(Boolean))].sort(), [overview.roster]);
   const filteredAttendance = overview.attendance;

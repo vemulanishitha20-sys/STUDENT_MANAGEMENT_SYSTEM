@@ -87,6 +87,9 @@ export default function Directory({
     active: scopedRows.filter((row) => row.is_active !== false).length,
     lowAttendance: scopedRows.filter((row) => attendance(row) < 75).length,
   };
+  const selectedPerson = selected
+    ? rows.find((row) => row.id === selected.id) || selected
+    : null;
   const clearFilters = () => {
     setQuery("");
     setBranch("All");
@@ -427,7 +430,7 @@ export default function Directory({
       )}
       {selected && (
         <PersonDetails
-          person={selected}
+          person={selectedPerson}
           type={type}
           close={() => setSelected(null)}
         />

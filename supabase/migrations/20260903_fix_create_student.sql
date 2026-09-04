@@ -33,10 +33,12 @@ begin
   end;
 
   return query
-  insert into public.students(id, name, email, department, year)
+  insert into public.students(
+    id, name, email, department, year, attended_classes, total_classes
+  )
   values (
     v_new_id, trim(p_name), nullif(trim(coalesce(p_email, '')), ''),
-    p_department, p_year
+    p_department, p_year, 0, 0
   )
   returning *;
 end;

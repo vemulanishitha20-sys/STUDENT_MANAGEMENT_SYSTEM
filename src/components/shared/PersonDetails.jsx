@@ -2,6 +2,9 @@ import { Mail, X } from "lucide-react";
 export default function PersonDetails({ person, type, close }) {
   const subjects =
     person.teacher_subjects?.map((item) => item.subjects).filter(Boolean) || [];
+  const attendancePercentage = person.total_classes
+    ? Math.round((person.attended_classes / person.total_classes) * 100)
+    : 0;
   return (
     <div
       className="fixed inset-0 z-[80] grid place-items-center bg-slate-900/40 p-4"
@@ -34,20 +37,12 @@ export default function PersonDetails({ person, type, close }) {
               <span className="block text-xs text-slate-400">Attendance</span>
               <b
                 className={
-                  person.total_classes &&
-                  Math.round(
-                    (person.attended_classes / person.total_classes) * 100,
-                  ) < 75
+                  attendancePercentage < 75
                     ? "text-red-500"
                     : "text-emerald-600"
                 }
               >
-                {person.total_classes
-                  ? Math.round(
-                      (person.attended_classes / person.total_classes) * 100,
-                    )
-                  : 100}
-                %
+                {attendancePercentage}%
               </b>
             </div>
           )}

@@ -13,13 +13,14 @@ export default function AppRoutes({
   toggleActive,
   editStudent,
   editTeacherSubjects,
+  updateStudentAttendance,
 }) {
   return (
     <Routes>
       <Route path="/" element={<Dashboard data={data} />} />
       <Route path="/announcements" element={<AnnouncementCenter role="admin" canPublish author="Administrator Nissar" />} />
       <Route path="/schedule" element={<Schedule role="admin" teachers={data.teachers} canManage />} />
-      <Route path="/attendance" element={<AdminAttendance teachers={data.teachers} students={data.students} />} />
+      <Route path="/attendance" element={<AdminAttendance teachers={data.teachers} students={data.students} onAttendanceSaved={updateStudentAttendance} />} />
       <Route path="/subjects" element={<AdminSubjects />} />
       <Route path="/calendar" element={<AcademicCalendar role="admin" />} />
       <Route

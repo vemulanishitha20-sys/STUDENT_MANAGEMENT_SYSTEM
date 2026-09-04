@@ -6,6 +6,14 @@ create table if not exists student_id_counters (
 );
 alter table student_id_counters enable row level security;
 
+-- Publish student total changes so attendance cards and details update live.
+do $$
+begin
+  alter publication supabase_realtime add table public.students;
+exception
+  when duplicate_object then null;
+end $$;
+
 -- Run these two lines as a migration if the tables already exist.
 alter table if exists teachers add column if not exists year integer not null default 1 check (year between 1 and 4);
 alter table if exists students add column if not exists year integer not null default 1 check (year between 1 and 4);
@@ -44,8 +52,8 @@ begin
   set last_value=student_id_counters.last_value+1
   returning last_value into v_next_number;
   v_new_id := v_prefix || case when v_next_number < 100 then lpad(v_next_number::text,2,'0') else v_next_number::text end;
-  return query insert into students(id,name,email,department,year)
-    values(v_new_id,trim(p_name),nullif(trim(coalesce(p_email,'')),''),p_department,p_year) returning *;
+  return query insert into students(id,name,email,department,year,attended_classes,total_classes)
+    values(v_new_id,trim(p_name),nullif(trim(coalesce(p_email,'')),''),p_department,p_year,0,0) returning *;
 end $$;
 -- The return columns changed in a later version, so PostgreSQL requires the
 -- old function to be removed before it can be recreated.

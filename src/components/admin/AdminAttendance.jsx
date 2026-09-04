@@ -6,7 +6,7 @@ import { supabase } from "../../lib/data";
 import useAcademicHolidays from "../../hooks/useAcademicHolidays";
 import Toast from "../shared/Toast";
 
-export default function AdminAttendance({ teachers, students }) {
+export default function AdminAttendance({ teachers, students, onAttendanceSaved }) {
   const [teacher, setTeacher] = useState(null);
   const [subject, setSubject] = useState(null);
   const [date, setDate] = useState(() => new Date().toLocaleDateString("en-CA"));
@@ -101,7 +101,7 @@ export default function AdminAttendance({ teachers, students }) {
     setConfirming(false);
     if (!supabase || !allMarked || !isScheduled || isSunday || isFuture || isHoliday || locked) return;
     setSaving(true);
-    const { error } = await supabase.rpc("save_subject_attendance", {
+    const { data: results, error } = await supabase.rpc("save_subject_attendance", {
       p_teacher_id: teacher.id,
       p_subject_code: subject.code,
       p_date: date,
@@ -109,6 +109,7 @@ export default function AdminAttendance({ teachers, students }) {
     });
     setSaving(false);
     if (error) return setMessage(error.message);
+    onAttendanceSaved?.(results || []);
     setSaved(draft);
     setLocked(true);
     setMessage("Attendance saved successfully");

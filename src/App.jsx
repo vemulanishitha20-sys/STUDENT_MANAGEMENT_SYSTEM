@@ -55,6 +55,29 @@ export default function App() {
     window.addEventListener("focus", refreshData);
     return () => window.removeEventListener("focus", refreshData);
   }, []);
+  useEffect(() => {
+    if (!supabase) return undefined;
+    const channel = supabase
+      .channel("student-attendance-live-updates")
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "students" },
+        ({ new: updatedStudent }) => {
+          setData((current) => ({
+            ...current,
+            students: current.students.map((student) =>
+              student.id === updatedStudent.id
+                ? { ...student, ...updatedStudent }
+                : student,
+            ),
+          }));
+        },
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
   const flash = (m) => {
     setToast(m);
     setTimeout(() => setToast(""), 2500);
@@ -208,6 +231,18 @@ export default function App() {
     }));
     flash("Student updated successfully");
   };
+  const updateStudentAttendance = (results) => {
+    const totalsByStudent = new Map(
+      results.map((result) => [result.student_id, result]),
+    );
+    setData((current) => ({
+      ...current,
+      students: current.students.map((student) => {
+        const totals = totalsByStudent.get(student.id);
+        return totals ? { ...student, ...totals } : student;
+      }),
+    }));
+  };
   const editTeacherSubjects = async (id, subjectCodes) => {
     if (supabase) {
       const { error } = await supabase.rpc("update_teacher_subjects", {
@@ -337,6 +372,7 @@ export default function App() {
           toggleActive={toggleActive}
           editStudent={editStudent}
           editTeacherSubjects={editTeacherSubjects}
+          updateStudentAttendance={updateStudentAttendance}
         />
       </main>
       <Toast message={toast} />
