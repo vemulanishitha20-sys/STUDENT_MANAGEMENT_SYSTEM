@@ -161,6 +161,33 @@ form.max-w-2xl > p.mt-4.rounded-xl {
   background-color: rgb(248 250 252);
 }
 
+/* Keep schedule content inside its own day column. Long subject and faculty
+   names wrap within the card instead of covering the following weekday. */
+.overflow-scroll > table.min-w-\[900px\] > thead th:not(:first-child),
+.overflow-scroll > table.min-w-\[900px\] > tbody td:not([colspan]) {
+  box-sizing: border-box;
+  width: 13rem;
+  min-width: 13rem;
+  max-width: 13rem;
+}
+
+.overflow-scroll > table.min-w-\[900px\] > tbody td:not([colspan]) {
+  padding: 0.75rem;
+  overflow: hidden;
+}
+
+.overflow-scroll > table.min-w-\[900px\] > tbody td:not([colspan]) > div {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.overflow-scroll > table.min-w-\[900px\] > tbody td b,
+.overflow-scroll > table.min-w-\[900px\] > tbody td p {
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
 /* Students read one branch/year timetable; show it as one continuous page
    rather than a separate scroll panel. */
 section[data-role="student"] .overflow-scroll {
