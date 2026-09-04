@@ -23,7 +23,7 @@ begin
 
   insert into public.student_id_counters(prefix, last_value)
   values (v_prefix, 1)
-  on conflict (prefix) do update
+  on conflict on constraint student_id_counters_pkey do update
   set last_value = public.student_id_counters.last_value + 1
   returning last_value into v_next_number;
 

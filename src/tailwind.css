@@ -166,11 +166,20 @@ form.max-w-2xl > p.mt-4.rounded-xl {
 section[data-role="student"] .overflow-scroll {
   height: auto !important;
   min-height: 0 !important;
-  overflow: visible !important;
+  overflow-x: auto !important;
+  overflow-y: visible !important;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-gutter: stable;
 }
 
 section[data-role="student"] table.min-w-\[900px\] {
-  min-width: 100% !important;
+  min-width: 900px !important;
+}
+
+@media (min-width: 1024px) {
+  section[data-role="student"] table.min-w-\[900px\] {
+    min-width: 100% !important;
+  }
 }
 
 /* The student summary is plain page content, not part of the old dark banner. */
